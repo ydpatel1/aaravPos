@@ -15,7 +15,9 @@ class CommonAppBar extends StatelessWidget implements PreferredSizeWidget {
       title: Text(title),
       centerTitle: true,
       actions: actions,
-      backgroundColor: isIos ? Colors.white.withOpacity(0.74) : const Color(0xFFF7F7F8),
+      backgroundColor: isIos
+          ? Colors.white.withValues(alpha: 0.74)
+          : const Color(0xFFF7F7F8),
       flexibleSpace: isIos
           ? ClipRect(
               child: BackdropFilter(

@@ -1,5 +1,4 @@
-import 'package:aaravpos/features/booking/presentation/pages/slot_screen.dart'
-    show SlotScreen;
+import 'package:aaravpos/features/booking/presentation/pages/slot_screen.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/presentation/pages/login_screen.dart';

@@ -10,7 +10,7 @@ import '../../../../shared/widgets/kiosk_bottom_bar.dart';
 import '../../../../shared/widgets/platform_glass_card.dart';
 import '../blocs/booking_bloc.dart';
 import '../blocs/consent_bloc.dart';
-import '../cubit/session_cubit.dart';
+import '../blocs/session_bloc.dart';
 import '../widgets/signature_pad.dart';
 
 class ConsentScreen extends StatefulWidget {
@@ -27,7 +27,8 @@ class _ConsentScreenState extends State<ConsentScreen> {
   @override
   void initState() {
     super.initState();
-    final customerName = context.read<SessionCubit>().state.selectedCustomer ?? '';
+    final customerName =
+        context.read<SessionBloc>().state.selectedCustomer ?? '';
     context.read<ConsentBloc>().checkConsent(customerName);
   }
 
@@ -61,7 +62,10 @@ class _ConsentScreenState extends State<ConsentScreen> {
                 const SizedBox(height: 14),
                 Container(
                   height: isMobile ? 180 : 220,
-                  decoration: BoxDecoration(color: const Color(0xFFF7F7F8), borderRadius: BorderRadius.circular(16)),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF7F7F8),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   padding: const EdgeInsets.all(14),
                   child: const SingleChildScrollView(
                     child: Text(
@@ -71,7 +75,10 @@ class _ConsentScreenState extends State<ConsentScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text('Sign Here', style: TextStyle(fontWeight: FontWeight.w700)),
+                const Text(
+                  'Sign Here',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 8),
                 SignaturePad(controller: _controller),
                 const SizedBox(height: 10),
@@ -89,13 +96,16 @@ class _ConsentScreenState extends State<ConsentScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    OutlinedButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                    OutlinedButton(
+                      onPressed: () => context.pop(),
+                      child: const Text('Cancel'),
+                    ),
                     const SizedBox(width: 8),
                     ElevatedButton(
                       onPressed: _controller.isEmpty
                           ? null
                           : () {
-                              Navigator.pop(context);
+                              context.pop();
                               context.read<BookingBloc>().submitBooking();
                             },
                       child: const Text('Confirm'),
@@ -110,7 +120,10 @@ class _ConsentScreenState extends State<ConsentScreen> {
         return Dialog(
           backgroundColor: Colors.transparent,
           insetPadding: EdgeInsets.all(isMobile ? 12 : 40),
-          child: SizedBox(width: isMobile ? context.width : 960, child: dialogBody),
+          child: SizedBox(
+            width: isMobile ? context.width : 960,
+            child: dialogBody,
+          ),
         );
       },
     );
@@ -139,7 +152,135 @@ class _ConsentScreenState extends State<ConsentScreen> {
           );
         },
       ),
-      body: const SizedBox.expand(),
+      body: BlocBuilder<ConsentBloc, ConsentState>(
+        builder: (context, consentState) {
+          final session = context.watch<SessionBloc>().state;
+          return Padding(
+            padding: EdgeInsets.all(context.isMobile ? 16 : 24),
+            child: PlatformGlassCard(
+              radius: 24,
+              padding: const EdgeInsets.all(20),
+              child: ListView(
+                children: [
+                  const Text(
+                    'Booking Summary',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 22),
+                  ),
+                  const SizedBox(height: 16),
+                  ...session.selectedServices.map(
+                    (service) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  service.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                Text(
+                                  '${service.durationMin} min',
+                                  style: const TextStyle(
+                                    color: Color(0xFF737373),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            '\$${service.price.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const Divider(height: 28),
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Date',
+                          style: TextStyle(color: Color(0xFF737373)),
+                        ),
+                      ),
+                      Text(
+                        session.selectedDate
+                                ?.toIso8601String()
+                                .split('T')
+                                .first ??
+                            '-',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Time',
+                          style: TextStyle(color: Color(0xFF737373)),
+                        ),
+                      ),
+                      Text(session.selectedSlot?.time ?? '-'),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Customer',
+                          style: TextStyle(color: Color(0xFF737373)),
+                        ),
+                      ),
+                      Text(session.selectedCustomer ?? '-'),
+                    ],
+                  ),
+                  if (consentState.isConsentRequired) ...[
+                    const Divider(height: 28),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0x1FE12242),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0x66E12242)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            color: Color(0xFFE12242),
+                            size: 18,
+                          ),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'One or more services require consent. You will be asked to sign before confirming.',
+                              style: TextStyle(
+                                color: Color(0xFFE12242),
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

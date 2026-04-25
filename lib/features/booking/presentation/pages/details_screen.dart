@@ -6,14 +6,14 @@ import '../../../../core/router/app_routes.dart';
 import '../../../../shared/widgets/common_app_bar.dart';
 import '../../../../shared/widgets/platform_glass_card.dart';
 import '../blocs/booking_bloc.dart';
-import '../cubit/session_cubit.dart';
+import '../blocs/session_bloc.dart';
 
 class DetailsScreen extends StatelessWidget {
   const DetailsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final session = context.watch<SessionCubit>().state;
+    final session = context.watch<SessionBloc>().state;
     final bookingId = context.watch<BookingBloc>().state.bookingId ?? 'N/A';
 
     return Scaffold(
@@ -61,7 +61,7 @@ class DetailsScreen extends StatelessWidget {
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () {
-                  context.read<SessionCubit>().reset();
+                  context.read<SessionBloc>().reset();
                   context.go(AppRoutes.home);
                 },
                 child: const Text('Back to Home'),

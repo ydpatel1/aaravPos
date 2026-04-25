@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/utils/extensions/context_extension.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
-import '../cubit/session_cubit.dart';
+import '../blocs/session_bloc.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -76,9 +76,9 @@ class _ModeCard extends StatelessWidget {
     return InkWell(
       onTap: () {
         if (title == 'Appointment') {
-          context.read<SessionCubit>().setMode(BookingMode.appointment);
+          context.read<SessionBloc>().setMode(BookingMode.appointment);
         } else {
-          context.read<SessionCubit>().setMode(BookingMode.checkIn);
+          context.read<SessionBloc>().setMode(BookingMode.checkIn);
         }
         context.go(AppRoutes.services);
       },

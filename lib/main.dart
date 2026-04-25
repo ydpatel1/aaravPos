@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import 'app.dart';
-import 'core/di/injector.dart';
+import 'core/utils/helpers/injector.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

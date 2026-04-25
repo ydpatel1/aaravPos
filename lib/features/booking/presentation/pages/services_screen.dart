@@ -11,7 +11,7 @@ import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/kiosk_bottom_bar.dart';
 import '../../domain/service_item.dart';
 import '../blocs/service_bloc.dart';
-import '../cubit/session_cubit.dart';
+import '../blocs/session_bloc.dart';
 import '../widgets/service_card.dart';
 
 class ServicesScreen extends StatefulWidget {
@@ -30,7 +30,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final session = context.watch<SessionCubit>().state;
+    final session = context.watch<SessionBloc>().state;
 
     return Scaffold(
       appBar: const CommonAppBar(title: 'Select Services'),
@@ -122,7 +122,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                                 price: item.price,
                                 consentRequired: item.consentRequired,
                                 isSelected: session.selectedServices.contains(item),
-                                onTap: () => context.read<SessionCubit>().toggleService(item),
+                                onTap: () => context.read<SessionBloc>().toggleService(item),
                               );
                             },
                           );

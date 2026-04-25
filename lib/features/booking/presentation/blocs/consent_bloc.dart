@@ -3,45 +3,31 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/booking_repository.dart';
 
-class ConsentState extends Equatable {
-  const ConsentState({
-    this.isLoading = false,
-    this.isConsentRequired = true,
-    this.errorMessage,
-  });
+part 'consent_event.dart';
+part 'consent_state.dart';
 
-  final bool isLoading;
-  final bool isConsentRequired;
-  final String? errorMessage;
-
-  ConsentState copyWith({
-    bool? isLoading,
-    bool? isConsentRequired,
-    String? errorMessage,
-  }) {
-    return ConsentState(
-      isLoading: isLoading ?? this.isLoading,
-      isConsentRequired: isConsentRequired ?? this.isConsentRequired,
-      errorMessage: errorMessage,
-    );
+class ConsentBloc extends Bloc<ConsentEvent, ConsentState> {
+  ConsentBloc(this._repository) : super(const ConsentState()) {
+    on<ConsentCheckRequested>(_onConsentCheckRequested);
   }
-
-  @override
-  List<Object?> get props => [isLoading, isConsentRequired, errorMessage];
-}
-
-class ConsentBloc extends Cubit<ConsentState> {
-  ConsentBloc(this._repository) : super(const ConsentState());
 
   final BookingRepository _repository;
 
-  Future<void> checkConsent(String customerName) async {
+  Future<void> _onConsentCheckRequested(
+    ConsentCheckRequested event,
+    Emitter<ConsentState> emit,
+  ) async {
     emit(state.copyWith(isLoading: true, errorMessage: null));
     try {
-      final isRequired = await _repository.checkConsent(customerName);
+      final isRequired = await _repository.checkConsent(event.customerName);
       emit(state.copyWith(isLoading: false, isConsentRequired: isRequired));
     } catch (_) {
-      emit(state.copyWith(isLoading: false, errorMessage: 'Consent check failed'));
+      emit(
+        state.copyWith(isLoading: false, errorMessage: 'Consent check failed'),
+      );
     }
   }
+
+  Future<void> checkConsent(String customerName) async =>
+      add(ConsentCheckRequested(customerName));
 }

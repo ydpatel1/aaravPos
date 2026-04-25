@@ -4,45 +4,30 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/booking_repository.dart';
 import '../../domain/staff_member.dart';
 
-class StaffState extends Equatable {
-  const StaffState({
-    this.isLoading = false,
-    this.items = const <StaffMember>[],
-    this.errorMessage,
-  });
+part 'staff_event.dart';
+part 'staff_state.dart';
 
-  final bool isLoading;
-  final List<StaffMember> items;
-  final String? errorMessage;
-
-  StaffState copyWith({
-    bool? isLoading,
-    List<StaffMember>? items,
-    String? errorMessage,
-  }) {
-    return StaffState(
-      isLoading: isLoading ?? this.isLoading,
-      items: items ?? this.items,
-      errorMessage: errorMessage,
-    );
+class StaffBloc extends Bloc<StaffEvent, StaffState> {
+  StaffBloc(this._repository) : super(const StaffState()) {
+    on<StaffFetched>(_onStaffFetched);
   }
-
-  @override
-  List<Object?> get props => [isLoading, items, errorMessage];
-}
-
-class StaffBloc extends Cubit<StaffState> {
-  StaffBloc(this._repository) : super(const StaffState());
 
   final BookingRepository _repository;
 
-  Future<void> fetchStaff() async {
+  Future<void> _onStaffFetched(
+    StaffFetched event,
+    Emitter<StaffState> emit,
+  ) async {
     emit(state.copyWith(isLoading: true, errorMessage: null));
     try {
       final items = await _repository.fetchStaff();
       emit(state.copyWith(isLoading: false, items: items));
     } catch (_) {
-      emit(state.copyWith(isLoading: false, errorMessage: 'Failed to fetch staff'));
+      emit(
+        state.copyWith(isLoading: false, errorMessage: 'Failed to fetch staff'),
+      );
     }
   }
+
+  Future<void> fetchStaff() async => add(const StaffFetched());
 }

@@ -6,51 +6,44 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../domain/booking_repository.dart';
 
-class CustomerState extends Equatable {
-  const CustomerState({
-    this.isLoading = false,
-    this.results = const <String>[],
-    this.errorMessage,
-  });
+part 'customer_event.dart';
+part 'customer_state.dart';
 
-  final bool isLoading;
-  final List<String> results;
-  final String? errorMessage;
-
-  CustomerState copyWith({
-    bool? isLoading,
-    List<String>? results,
-    String? errorMessage,
-  }) {
-    return CustomerState(
-      isLoading: isLoading ?? this.isLoading,
-      results: results ?? this.results,
-      errorMessage: errorMessage,
-    );
+class CustomerBloc extends Bloc<CustomerEvent, CustomerState> {
+  CustomerBloc(this._repository) : super(const CustomerState()) {
+    on<CustomerSearchRequested>(_onSearchRequested);
+    on<CustomerSearchDebounced>(_onSearchDebounced);
   }
-
-  @override
-  List<Object?> get props => [isLoading, results, errorMessage];
-}
-
-class CustomerBloc extends Cubit<CustomerState> {
-  CustomerBloc(this._repository) : super(const CustomerState());
 
   final BookingRepository _repository;
   Timer? _debounce;
 
-  void search(String query) {
+  void _onSearchRequested(
+    CustomerSearchRequested event,
+    Emitter<CustomerState> emit,
+  ) {
     _debounce?.cancel();
-    _debounce = Timer(AppConstants.searchDebounce, () async {
-      emit(state.copyWith(isLoading: true, errorMessage: null));
-      try {
-        final results = await _repository.searchCustomers(query);
-        emit(state.copyWith(isLoading: false, results: results));
-      } catch (_) {
-        emit(state.copyWith(isLoading: false, errorMessage: 'Customer not found'));
-      }
+    _debounce = Timer(AppConstants.searchDebounce, () {
+      add(CustomerSearchDebounced(event.query));
     });
   }
+
+  Future<void> _onSearchDebounced(
+    CustomerSearchDebounced event,
+    Emitter<CustomerState> emit,
+  ) async {
+    emit(state.copyWith(isLoading: true, errorMessage: null));
+    try {
+      final results = await _repository.searchCustomers(event.query);
+      emit(state.copyWith(isLoading: false, results: results));
+    } catch (_) {
+      emit(
+        state.copyWith(isLoading: false, errorMessage: 'Customer not found'),
+      );
+    }
+  }
+
+  void search(String query) => add(CustomerSearchRequested(query));
 
   @override
   Future<void> close() {
@@ -58,3 +51,4 @@ class CustomerBloc extends Cubit<CustomerState> {
     return super.close();
   }
 }
+

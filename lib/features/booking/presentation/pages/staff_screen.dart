@@ -4,12 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/router/app_routes.dart';
-import '../../../../core/utils/extensions/context_extension.dart';
 import '../../../../shared/widgets/common_app_bar.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/kiosk_bottom_bar.dart';
 import '../blocs/staff_bloc.dart';
-import '../cubit/session_cubit.dart';
+import '../blocs/session_bloc.dart';
 import '../widgets/staff_card.dart';
 
 class StaffScreen extends StatefulWidget {
@@ -28,7 +27,7 @@ class _StaffScreenState extends State<StaffScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final session = context.watch<SessionCubit>().state;
+    final session = context.watch<SessionBloc>().state;
 
     return Scaffold(
       appBar: const CommonAppBar(title: 'Select your service provider'),
@@ -75,7 +74,7 @@ class _StaffScreenState extends State<StaffScreen> {
                     return StaffCard(
                       name: staff.name,
                       isSelected: staff == session.selectedStaff,
-                      onTap: () => context.read<SessionCubit>().setStaff(staff),
+                      onTap: () => context.read<SessionBloc>().setStaff(staff),
                     );
                   },
                 );

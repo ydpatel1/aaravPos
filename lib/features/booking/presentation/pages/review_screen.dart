@@ -8,7 +8,7 @@ import '../../../../shared/widgets/common_app_bar.dart';
 import '../../../../shared/widgets/kiosk_bottom_bar.dart';
 import '../../../../shared/widgets/platform_glass_card.dart';
 import '../blocs/customer_bloc.dart';
-import '../cubit/session_cubit.dart';
+import '../blocs/session_bloc.dart';
 import '../widgets/customer_dropdown.dart';
 
 class ReviewScreen extends StatefulWidget {
@@ -41,7 +41,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final session = context.watch<SessionCubit>().state;
+    final session = context.watch<SessionBloc>().state;
     final isMobile = context.isMobile;
 
     return Scaffold(
@@ -142,7 +142,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                     value: session.selectedCustomer,
                     onChanged: (value) {
                       if (value != null) {
-                        context.read<SessionCubit>().setCustomer(value);
+                        context.read<SessionBloc>().setCustomer(value);
                       }
                     },
                   ),

@@ -7,14 +7,14 @@ import '../../../../core/utils/extensions/context_extension.dart';
 import '../../../../shared/widgets/common_app_bar.dart';
 import '../../../../shared/widgets/kiosk_bottom_bar.dart';
 import '../../../../shared/widgets/platform_glass_card.dart';
-import '../cubit/session_cubit.dart';
+import '../blocs/session_bloc.dart';
 
 class DateScreen extends StatelessWidget {
   const DateScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final selectedDate = context.watch<SessionCubit>().state.selectedDate;
+    final selectedDate = context.watch<SessionBloc>().state.selectedDate;
     final isMobile = context.isMobile;
 
     return Scaffold(
@@ -38,7 +38,7 @@ class DateScreen extends StatelessWidget {
                 initialDate: selectedDate ?? DateTime.now(),
                 firstDate: DateTime.now(),
                 lastDate: DateTime.now().add(const Duration(days: 180)),
-                onDateChanged: (date) => context.read<SessionCubit>().setDate(date),
+                onDateChanged: (date) => context.read<SessionBloc>().setDate(date),
               ),
             ),
           ),

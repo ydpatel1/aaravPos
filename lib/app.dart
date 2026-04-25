@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'core/constants/app_constants.dart';
-import 'core/di/injector.dart';
+import 'core/utils/helpers/injector.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
@@ -12,7 +12,7 @@ import 'features/booking/presentation/blocs/customer_bloc.dart';
 import 'features/booking/presentation/blocs/service_bloc.dart';
 import 'features/booking/presentation/blocs/slot_bloc.dart';
 import 'features/booking/presentation/blocs/staff_bloc.dart';
-import 'features/booking/presentation/cubit/session_cubit.dart';
+import 'features/booking/presentation/blocs/session_bloc.dart';
 
 class AaravPosApp extends StatelessWidget {
   const AaravPosApp({super.key});
@@ -22,7 +22,7 @@ class AaravPosApp extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider<AuthBloc>.value(value: getIt<AuthBloc>()),
-        BlocProvider<SessionCubit>.value(value: getIt<SessionCubit>()),
+        BlocProvider<SessionBloc>.value(value: getIt<SessionBloc>()),
         BlocProvider<ServiceBloc>.value(value: getIt<ServiceBloc>()),
         BlocProvider<StaffBloc>.value(value: getIt<StaffBloc>()),
         BlocProvider<SlotBloc>.value(value: getIt<SlotBloc>()),

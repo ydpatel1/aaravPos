@@ -22,20 +22,22 @@ class PlatformGlassCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isIos = Theme.of(context).platform == TargetPlatform.iOS;
     final decoration = BoxDecoration(
-      color: color ?? (isIos ? Colors.white.withOpacity(0.72) : Colors.white),
+      color:
+          color ??
+          (isIos ? Colors.white.withValues(alpha: 0.72) : Colors.white),
       borderRadius: BorderRadius.circular(radius),
       border: border,
       boxShadow: const [
-        BoxShadow(color: Color(0x14000000), blurRadius: 14, offset: Offset(0, 6)),
+        BoxShadow(
+          color: Color(0x14000000),
+          blurRadius: 14,
+          offset: Offset(0, 6),
+        ),
       ],
     );
 
     if (!isIos) {
-      return Container(
-        padding: padding,
-        decoration: decoration,
-        child: child,
-      );
+      return Container(padding: padding, decoration: decoration, child: child);
     }
 
     return ClipRRect(
