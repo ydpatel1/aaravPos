@@ -1,15 +1,15 @@
-import 'package:aaravpos/features/booking/presentation/pages/slot_screen.dart';
+import 'package:aaravpos/presentation/screens/pages/consent_screen.dart';
+import 'package:aaravpos/presentation/screens/pages/date_screen.dart';
+import 'package:aaravpos/presentation/screens/pages/details_screen.dart';
+import 'package:aaravpos/presentation/screens/pages/home_screen.dart';
+import 'package:aaravpos/presentation/screens/pages/login_screen.dart';
+import 'package:aaravpos/presentation/screens/pages/review_screen.dart';
+import 'package:aaravpos/presentation/screens/pages/services_screen.dart';
+import 'package:aaravpos/presentation/screens/pages/slot_screen.dart';
+import 'package:aaravpos/presentation/screens/pages/staff_screen.dart';
+import 'package:aaravpos/presentation/screens/pages/success_screen.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../features/auth/presentation/pages/login_screen.dart';
-import '../../features/booking/presentation/pages/consent_screen.dart';
-import '../../features/booking/presentation/pages/date_screen.dart';
-import '../../features/booking/presentation/pages/details_screen.dart';
-import '../../features/booking/presentation/pages/home_screen.dart';
-import '../../features/booking/presentation/pages/review_screen.dart';
-import '../../features/booking/presentation/pages/services_screen.dart';
-import '../../features/booking/presentation/pages/staff_screen.dart';
-import '../../features/booking/presentation/pages/success_screen.dart';
 import 'app_routes.dart';
 
 class AppRouter {

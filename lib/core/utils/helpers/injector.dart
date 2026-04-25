@@ -1,18 +1,18 @@
+import 'package:aaravpos/data/auth/auth_remote_data_source.dart';
+import 'package:aaravpos/data/auth/auth_repository_impl.dart';
+import 'package:aaravpos/data/booking/booking_repository_impl.dart';
+import 'package:aaravpos/domain/repo/auth_repository.dart';
+import 'package:aaravpos/domain/repo/booking_repository.dart';
+import 'package:aaravpos/presentation/bloc/auth/auth_bloc.dart';
+import 'package:aaravpos/presentation/bloc/booking/booking_bloc.dart';
+import 'package:aaravpos/presentation/bloc/consent/consent_bloc.dart';
+import 'package:aaravpos/presentation/bloc/customer/customer_bloc.dart';
+import 'package:aaravpos/presentation/bloc/service/service_bloc.dart';
+import 'package:aaravpos/presentation/bloc/session/session_bloc.dart';
+import 'package:aaravpos/presentation/bloc/slot/slot_bloc.dart';
+import 'package:aaravpos/presentation/bloc/staff/staff_bloc.dart';
 import 'package:get_it/get_it.dart';
 
-import '../../../features/auth/data/auth_remote_data_source.dart';
-import '../../../features/auth/data/auth_repository_impl.dart';
-import '../../../features/auth/domain/auth_repository.dart';
-import '../../../features/auth/presentation/bloc/auth_bloc.dart';
-import '../../../features/booking/data/booking_repository_impl.dart';
-import '../../../features/booking/domain/booking_repository.dart';
-import '../../../features/booking/presentation/blocs/booking_bloc.dart';
-import '../../../features/booking/presentation/blocs/consent_bloc.dart';
-import '../../../features/booking/presentation/blocs/customer_bloc.dart';
-import '../../../features/booking/presentation/blocs/service_bloc.dart';
-import '../../../features/booking/presentation/blocs/slot_bloc.dart';
-import '../../../features/booking/presentation/blocs/staff_bloc.dart';
-import '../../../features/booking/presentation/blocs/session_bloc.dart';
 import '../../network/api_service.dart';
 import '../../network/dio_client.dart';
 import '../../storage/secure_storage.dart';
@@ -28,8 +28,12 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton<DioClient>(() => DioClient(getIt()));
   getIt.registerLazySingleton<ApiService>(() => ApiService(getIt()));
 
-  getIt.registerLazySingleton<AuthRemoteDataSource>(() => AuthRemoteDataSource(getIt()));
-  getIt.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl(getIt(), getIt()));
+  getIt.registerLazySingleton<AuthRemoteDataSource>(
+    () => AuthRemoteDataSource(getIt()),
+  );
+  getIt.registerLazySingleton<AuthRepository>(
+    () => AuthRepositoryImpl(getIt(), getIt()),
+  );
   getIt.registerLazySingleton<AuthBloc>(() => AuthBloc(getIt()));
 
   getIt.registerLazySingleton<BookingRepository>(BookingRepositoryImpl.new);
