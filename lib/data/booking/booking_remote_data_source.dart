@@ -1,5 +1,6 @@
 import '../../core/network/api_service.dart';
 import '../../domain/model/service_item.dart';
+import '../../domain/model/staff_member.dart';
 
 class BookingRemoteDataSource {
   BookingRemoteDataSource(this._apiService);
@@ -113,6 +114,80 @@ class BookingRemoteDataSource {
       return items;
     } catch (e) {
       throw Exception('Failed to fetch services: ${e.toString()}');
+    }
+  }
+
+  /// GET staff/outlet/$outletId
+  ///
+  /// Expected response shape:
+  /// {
+  ///   "success": true,
+  ///   "message": "Staff retrieved successfully",
+  ///   "data": [
+  ///     {
+  ///       "id": "...",
+  ///       "staffDetails": {
+  ///         "firstName": "Harshil",
+  ///         "lastName": "Patel",
+  ///         "staff_type": "Barber"
+  ///       }
+  ///     }
+  ///   ]
+  /// }
+  Future<List<StaffMember>> fetchStaff({required String outletId}) async {
+    try {
+      final response = await _apiService.get('staff/outlet/$outletId');
+
+      final body = response.data;
+      if (body is! Map<String, dynamic>) {
+        throw Exception(
+          'Invalid response format: expected Map<String, dynamic>',
+        );
+      }
+
+      if (body['success'] == false) {
+        final errorMsg = body['message'] as String? ?? 'Failed to fetch staff';
+        throw Exception(errorMsg);
+      }
+
+      final data = body['data'];
+      if (data is! List) {
+        throw Exception('Invalid data format: expected List');
+      }
+
+      final items = <StaffMember>[];
+      for (final staff in data) {
+        if (staff is! Map<String, dynamic>) {
+          continue;
+        }
+
+        try {
+          final staffDetails = staff['staffDetails'] as Map<String, dynamic>?;
+          if (staffDetails == null) {
+            continue;
+          }
+
+          items.add(
+            StaffMember(
+              id: staff['id'] as String? ?? '',
+              firstName: staffDetails['firstName'] as String? ?? '',
+              lastName: staffDetails['lastName'] as String? ?? '',
+              role: staffDetails['staff_type'] as String? ?? '',
+            ),
+          );
+        } catch (e) {
+          // Skip malformed staff items
+          continue;
+        }
+      }
+
+      if (items.isEmpty) {
+        throw Exception('No staff members found');
+      }
+
+      return items;
+    } catch (e) {
+      throw Exception('Failed to fetch staff: ${e.toString()}');
     }
   }
 }

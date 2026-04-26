@@ -48,14 +48,11 @@ class BookingRepositoryImpl implements BookingRepository {
 
   @override
   Future<List<StaffMember>> fetchStaff() async {
-    await Future<void>.delayed(const Duration(milliseconds: 350));
-    return const [
-      StaffMember(id: 's1', name: 'Harshil Patel'),
-      StaffMember(id: 's2', name: 'Arial A'),
-      StaffMember(id: 's3', name: 'Ali M'),
-      StaffMember(id: 's4', name: 'chloe C'),
-      StaffMember(id: 's5', name: 'Ayaan B'),
-    ];
+    final outletId = await _secureStorage.getOutletId();
+    if (outletId == null || outletId.isEmpty) {
+      throw Exception('Outlet ID not found. Please log in again.');
+    }
+    return _remoteDataSource.fetchStaff(outletId: outletId);
   }
 
   @override

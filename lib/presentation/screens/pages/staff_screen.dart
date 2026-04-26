@@ -2,6 +2,7 @@ import 'package:aaravpos/presentation/bloc/session/session_bloc.dart';
 import 'package:aaravpos/presentation/bloc/staff/staff_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_spacing.dart';
@@ -31,7 +32,13 @@ class _StaffScreenState extends State<StaffScreen> {
     final session = context.watch<SessionBloc>().state;
 
     return Scaffold(
-      appBar: const CommonAppBar(title: 'Select your service provider'),
+      appBar: CommonAppBar(
+        title: 'Select your service provider',
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.pop(),
+        ),
+      ),
       bottomNavigationBar: KioskBottomBar(
         total: 'Total: \$215.00',
         subtitle: '${session.selectedServices.length} Service Selected',
@@ -61,19 +68,23 @@ class _StaffScreenState extends State<StaffScreen> {
 
             return LayoutBuilder(
               builder: (context, constraints) {
-                final crossAxisCount = constraints.maxWidth < 700 ? 2 : 4;
-                return GridView.builder(
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCount,
-                    childAspectRatio: constraints.maxWidth < 700 ? 0.86 : 0.82,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                  ),
+                final cols = constraints.maxWidth < 550
+                    ? 2 // Mobile: 2 items per row
+                    : constraints.maxWidth < 900
+                    ? 3 // Tablet: 3 items per row
+                    : 4; // Desktop: 4 items per row
+
+                return AlignedGridView.count(
+                  crossAxisCount: cols,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
                   itemCount: state.items.length,
                   itemBuilder: (_, index) {
                     final staff = state.items[index];
                     return StaffCard(
-                      name: staff.name,
+                      name: staff.fullName,
+                      role: staff.role,
+                      index: index,
                       isSelected: staff == session.selectedStaff,
                       onTap: () => context.read<SessionBloc>().setStaff(staff),
                     );
