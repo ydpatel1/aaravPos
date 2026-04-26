@@ -28,22 +28,8 @@ class BookingRepositoryImpl implements BookingRepository {
   }
 
   @override
-  Future<List<SlotItem>> fetchSlots(DateTime? date) async {
-    await Future<void>.delayed(const Duration(milliseconds: 350));
-    return const [
-      SlotItem(time: '10:45 AM', period: 'Morning'),
-      SlotItem(time: '11:00 AM', period: 'Morning'),
-      SlotItem(time: '11:15 AM', period: 'Morning'),
-      SlotItem(time: '11:30 AM', period: 'Morning'),
-      SlotItem(time: '12:00 PM', period: 'Afternoon'),
-      SlotItem(time: '12:15 PM', period: 'Afternoon'),
-      SlotItem(time: '12:30 PM', period: 'Afternoon'),
-      SlotItem(time: '12:45 PM', period: 'Afternoon'),
-      SlotItem(time: '1:00 PM', period: 'Afternoon'),
-      SlotItem(time: '5:00 PM', period: 'Evening'),
-      SlotItem(time: '5:15 PM', period: 'Evening'),
-      SlotItem(time: '5:30 PM', period: 'Evening'),
-    ];
+  Future<List<SlotItem>> fetchSlots(String staffId, DateTime date) async {
+    return _remoteDataSource.fetchSlots(staffId: staffId, date: date);
   }
 
   @override

@@ -23,8 +23,13 @@ class _SlotScreenState extends State<SlotScreen> {
   @override
   void initState() {
     super.initState();
-    final date = context.read<SessionBloc>().state.selectedDate;
-    context.read<SlotBloc>().fetchSlots(date);
+    final session = context.read<SessionBloc>().state;
+    final staffId = session.selectedStaff?.id;
+    final date = session.selectedDate;
+
+    if (staffId != null && date != null) {
+      context.read<SlotBloc>().fetchSlots(staffId, date);
+    }
   }
 
   @override
@@ -32,12 +37,18 @@ class _SlotScreenState extends State<SlotScreen> {
     final selectedSlot = context.watch<SessionBloc>().state.selectedSlot;
 
     return Scaffold(
-      appBar: const CommonAppBar(title: 'Select Time Slot'),
+      appBar: CommonAppBar(
+        title: 'Select Time Slot',
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.pop(),
+        ),
+      ),
       bottomNavigationBar: KioskBottomBar(
         total: 'Total: \$215.00',
         subtitle: selectedSlot == null
             ? 'Select a time slot'
-            : '${selectedSlot.time} - 1:15 PM � 2 Services',
+            : '${selectedSlot.startTime} selected',
         primaryLabel: 'Continue',
         primaryEnabled: selectedSlot != null,
         onPrimary: () => context.go(AppRoutes.review),
@@ -68,20 +79,41 @@ class _SlotScreenState extends State<SlotScreen> {
             if (state.errorMessage != null) {
               return ErrorStateWidget(
                 message: state.errorMessage!,
-                onRetry: () => context.read<SlotBloc>().fetchSlots(
-                  context.read<SessionBloc>().state.selectedDate,
-                ),
+                onRetry: () {
+                  final session = context.read<SessionBloc>().state;
+                  final staffId = session.selectedStaff?.id;
+                  final date = session.selectedDate;
+                  if (staffId != null && date != null) {
+                    context.read<SlotBloc>().fetchSlots(staffId, date);
+                  }
+                },
               );
             }
 
+            // Group slots by period (Morning, Afternoon, Evening)
             final groups = <String, List<SlotItem>>{
               'Morning': [],
               'Afternoon': [],
               'Evening': [],
             };
+
             for (final slot in state.items) {
-              groups.putIfAbsent(slot.period, () => []).add(slot);
+              if (!slot.available) continue; // Skip unavailable slots
+
+              final time = slot.startTime;
+              final hour = int.tryParse(time.split(':')[0]) ?? 0;
+
+              if (hour < 12) {
+                groups['Morning']!.add(slot);
+              } else if (hour < 17) {
+                groups['Afternoon']!.add(slot);
+              } else {
+                groups['Evening']!.add(slot);
+              }
             }
+
+            // Remove empty periods
+            groups.removeWhere((key, value) => value.isEmpty);
 
             return ListView(
               children: groups.entries.map((entry) {
@@ -111,7 +143,7 @@ class _SlotScreenState extends State<SlotScreen> {
                         spacing: 10,
                         runSpacing: 10,
                         children: entry.value.map<Widget>((slot) {
-                          final selected = selectedSlot == slot;
+                          final selected = selectedSlot?.id == slot.id;
                           return InkWell(
                             onTap: () =>
                                 context.read<SessionBloc>().setSlot(slot),
@@ -131,7 +163,7 @@ class _SlotScreenState extends State<SlotScreen> {
                                 ),
                               ),
                               child: Text(
-                                slot.time,
+                                slot.startTime,
                                 style: TextStyle(
                                   color: selected
                                       ? const Color(0xFFE12242)

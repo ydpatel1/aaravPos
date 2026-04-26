@@ -230,7 +230,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
                           style: TextStyle(color: Color(0xFF737373)),
                         ),
                       ),
-                      Text(session.selectedSlot?.time ?? '-'),
+                      Text(session.selectedSlot?.startTime ?? '-'),
                     ],
                   ),
                   const SizedBox(height: 8),

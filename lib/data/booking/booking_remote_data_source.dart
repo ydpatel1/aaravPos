@@ -1,5 +1,6 @@
 import '../../core/network/api_service.dart';
 import '../../domain/model/service_item.dart';
+import '../../domain/model/slot_item.dart';
 import '../../domain/model/staff_member.dart';
 
 class BookingRemoteDataSource {
@@ -188,6 +189,29 @@ class BookingRemoteDataSource {
       return items;
     } catch (e) {
       throw Exception('Failed to fetch staff: ${e.toString()}');
+    }
+  }
+
+
+
+  /// GET staff/slots/$staffId?date=$dateStr
+  Future<List<SlotItem>> fetchSlots({
+    required String staffId,
+    required DateTime date,
+  }) async {
+    try {
+      final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      final response = await _apiService.get('staff/slots/$staffId', queryParameters: <String, dynamic>{'date': dateStr});
+      final body = response.data;
+      if (body is! List) throw Exception('Invalid response format: expected List');
+      final items = <SlotItem>[];
+      for (final slot in body) {
+        if (slot is! Map<String, dynamic>) continue;
+        try { items.add(SlotItem.fromJson(slot)); } catch (e) { continue; }
+      }
+      return items;
+    } catch (e) {
+      throw Exception('Failed to fetch slots: ${e.toString()}');
     }
   }
 }

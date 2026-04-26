@@ -75,33 +75,65 @@ class _ReviewScreenState extends State<ReviewScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(service.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+                                Text(
+                                  service.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 18,
+                                  ),
+                                ),
                                 if (service.consentRequired)
                                   Container(
                                     margin: const EdgeInsets.only(top: 6),
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: const Color(0x1FE12242),
                                       borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(color: const Color(0x66E12242)),
+                                      border: Border.all(
+                                        color: const Color(0x66E12242),
+                                      ),
                                     ),
-                                    child: const Text('Consent Required', style: TextStyle(color: Color(0xFFE12242), fontSize: 11)),
+                                    child: const Text(
+                                      'Consent Required',
+                                      style: TextStyle(
+                                        color: Color(0xFFE12242),
+                                        fontSize: 11,
+                                      ),
+                                    ),
                                   ),
                                 const SizedBox(height: 6),
-                                Text('${service.durationMin} Minutes', style: const TextStyle(color: Color(0xFF737373))),
+                                Text(
+                                  '${service.durationMin} Minutes',
+                                  style: const TextStyle(
+                                    color: Color(0xFF737373),
+                                  ),
+                                ),
                               ],
                             ),
                           ),
-                          Text('\$${service.price.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 20)),
+                          Text(
+                            '\$${service.price.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 20,
+                            ),
+                          ),
                         ],
                       ),
                     ),
                   ),
                   const Divider(),
                   const SizedBox(height: 12),
-                  Text('Date: ${session.selectedDate?.toIso8601String().split('T').first ?? '23-04-2026'}'),
+                  Text(
+                    'Date: ${session.selectedDate?.toIso8601String().split('T').first ?? '23-04-2026'}',
+                  ),
                   const SizedBox(height: 8),
-                  Text('Time: ${session.selectedSlot?.time ?? '11:00 AM'}'),
+                  Text(
+                    'Time: ${session.selectedSlot?.startTime ?? '11:00 AM'}',
+                  ),
                 ],
               ),
             );
@@ -112,7 +144,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
               child: ListView(
                 shrinkWrap: true,
                 children: [
-                  const Text('Mobile Number *', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20)),
+                  const Text(
+                    'Mobile Number *',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
+                  ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
@@ -131,7 +166,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
                       Expanded(
                         child: TextField(
                           controller: _phoneController,
-                          decoration: const InputDecoration(prefixIcon: Icon(Icons.phone_outlined), hintText: '1234567890'),
+                          decoration: const InputDecoration(
+                            prefixIcon: Icon(Icons.phone_outlined),
+                            hintText: '1234567890',
+                          ),
                           onChanged: context.read<CustomerBloc>().search,
                         ),
                       ),
@@ -148,22 +186,29 @@ class _ReviewScreenState extends State<ReviewScreen> {
                     },
                   ),
                   const SizedBox(height: 12),
-                  TextField(controller: _firstName, decoration: const InputDecoration(labelText: 'First Name *')),
+                  TextField(
+                    controller: _firstName,
+                    decoration: const InputDecoration(
+                      labelText: 'First Name *',
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  TextField(controller: _lastName, decoration: const InputDecoration(labelText: 'Last Name')),
+                  TextField(
+                    controller: _lastName,
+                    decoration: const InputDecoration(labelText: 'Last Name'),
+                  ),
                   const SizedBox(height: 8),
-                  TextField(controller: _email, decoration: const InputDecoration(labelText: 'Email')),
+                  TextField(
+                    controller: _email,
+                    decoration: const InputDecoration(labelText: 'Email'),
+                  ),
                 ],
               ),
             );
 
             if (isMobile) {
               return ListView(
-                children: [
-                  leftPanel,
-                  const SizedBox(height: 12),
-                  rightPanel,
-                ],
+                children: [leftPanel, const SizedBox(height: 12), rightPanel],
               );
             }
 

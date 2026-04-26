@@ -8,10 +8,11 @@ abstract class SlotEvent extends Equatable {
 }
 
 class SlotsFetched extends SlotEvent {
-  const SlotsFetched(this.selectedDate);
+  const SlotsFetched({required this.staffId, required this.selectedDate});
 
-  final DateTime? selectedDate;
+  final String staffId;
+  final DateTime selectedDate;
 
   @override
-  List<Object?> get props => [selectedDate];
+  List<Object?> get props => [staffId, selectedDate];
 }

@@ -3,8 +3,6 @@ import 'package:aaravpos/domain/model/slot_item.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-
-
 part 'slot_event.dart';
 part 'slot_state.dart';
 
@@ -21,13 +19,21 @@ class SlotBloc extends Bloc<SlotEvent, SlotState> {
   ) async {
     emit(state.copyWith(isLoading: true, errorMessage: null));
     try {
-      final items = await _repository.fetchSlots(event.selectedDate);
+      final items = await _repository.fetchSlots(
+        event.staffId,
+        event.selectedDate,
+      );
       emit(state.copyWith(isLoading: false, items: items));
-    } catch (_) {
-      emit(state.copyWith(isLoading: false, errorMessage: 'No slots available'));
+    } catch (e) {
+      emit(
+        state.copyWith(
+          isLoading: false,
+          errorMessage: 'Failed to fetch slots: ${e.toString()}',
+        ),
+      );
     }
   }
 
-  Future<void> fetchSlots(DateTime? selectedDate) async =>
-      add(SlotsFetched(selectedDate));
+  Future<void> fetchSlots(String staffId, DateTime selectedDate) async =>
+      add(SlotsFetched(staffId: staffId, selectedDate: selectedDate));
 }
