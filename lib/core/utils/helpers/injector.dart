@@ -1,5 +1,6 @@
 import 'package:aaravpos/data/auth/auth_remote_data_source.dart';
 import 'package:aaravpos/data/auth/auth_repository_impl.dart';
+import 'package:aaravpos/data/booking/booking_remote_data_source.dart';
 import 'package:aaravpos/data/booking/booking_repository_impl.dart';
 import 'package:aaravpos/domain/repo/auth_repository.dart';
 import 'package:aaravpos/domain/repo/booking_repository.dart';
@@ -31,13 +32,18 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton<AuthRemoteDataSource>(
     () => AuthRemoteDataSource(getIt()),
   );
+  getIt.registerLazySingleton<BookingRemoteDataSource>(
+    () => BookingRemoteDataSource(getIt()),
+  );
   getIt.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(getIt(), getIt()),
   );
   getIt.registerLazySingleton<SessionBloc>(SessionBloc.new);
   getIt.registerLazySingleton<AuthBloc>(() => AuthBloc(getIt(), getIt()));
 
-  getIt.registerLazySingleton<BookingRepository>(BookingRepositoryImpl.new);
+  getIt.registerLazySingleton<BookingRepository>(
+    () => BookingRepositoryImpl(getIt(), getIt()),
+  );
   getIt.registerLazySingleton<ServiceBloc>(() => ServiceBloc(getIt()));
   getIt.registerLazySingleton<StaffBloc>(() => StaffBloc(getIt()));
   getIt.registerLazySingleton<SlotBloc>(() => SlotBloc(getIt()));

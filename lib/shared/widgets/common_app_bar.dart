@@ -3,10 +3,16 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class CommonAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const CommonAppBar({required this.title, this.actions, super.key});
+  const CommonAppBar({
+    required this.title,
+    this.actions,
+    this.leading,
+    super.key,
+  });
 
   final String title;
   final List<Widget>? actions;
+  final Widget? leading;
 
   @override
   Widget build(BuildContext context) {
@@ -14,6 +20,7 @@ class CommonAppBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       title: Text(title),
       centerTitle: true,
+      leading: leading,
       actions: actions,
       backgroundColor: isIos
           ? Colors.white.withValues(alpha: 0.74)

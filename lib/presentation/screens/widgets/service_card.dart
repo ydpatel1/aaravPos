@@ -34,6 +34,7 @@ class ServiceCard extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               children: [
@@ -42,12 +43,17 @@ class ServiceCard extends StatelessWidget {
                     title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
                 CircleAvatar(
                   radius: 15,
-                  backgroundColor: isSelected ? const Color(0xFFE12242) : const Color(0xFFF3F3F4),
+                  backgroundColor: isSelected
+                      ? const Color(0xFFE12242)
+                      : const Color(0xFFF3F3F4),
                   child: Icon(
                     Icons.add,
                     color: isSelected ? Colors.white : const Color(0xFFE12242),
@@ -70,8 +76,11 @@ class ServiceCard extends StatelessWidget {
                   style: TextStyle(color: Color(0xFFE12242), fontSize: 11),
                 ),
               ),
-            const Spacer(),
-            Text('$duration min', style: const TextStyle(color: Color(0xFF727272), fontSize: 13)),
+            const SizedBox(height: 8),
+            Text(
+              '$duration min',
+              style: const TextStyle(color: Color(0xFF727272), fontSize: 13),
+            ),
             const SizedBox(height: 2),
             Text(
               '\$${price.toStringAsFixed(0)}',
