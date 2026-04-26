@@ -13,6 +13,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMobile = context.isMobile;
+    final isOutletOpen = context.watch<SessionBloc>().state.isOutletOpen;
 
     return Scaffold(
       floatingActionButton: FloatingActionButton(
@@ -34,24 +35,48 @@ class HomeScreen extends StatelessWidget {
               const Center(
                 child: Text(
                   'AaravPOS',
-                  style: TextStyle(color: Color(0xFFE12242), fontWeight: FontWeight.w800, fontSize: 28),
+                  style: TextStyle(
+                    color: Color(0xFFE12242),
+                    fontWeight: FontWeight.w800,
+                    fontSize: 28,
+                  ),
                 ),
               ),
               SizedBox(height: isMobile ? 20 : 30),
               Expanded(
                 child: isMobile
                     ? ListView(
-                        children: const [
-                          _ModeCard(title: 'Appointment', icon: Icons.calendar_month_outlined),
-                          SizedBox(height: 16),
-                          _ModeCard(title: 'Check-In', icon: Icons.place_outlined),
+                        children: [
+                          const _ModeCard(
+                            title: 'Appointment',
+                            icon: Icons.calendar_month_outlined,
+                            enabled: true,
+                          ),
+                          const SizedBox(height: 16),
+                          _ModeCard(
+                            title: 'Check-In',
+                            icon: Icons.place_outlined,
+                            enabled: isOutletOpen,
+                          ),
                         ],
                       )
-                    : const Row(
+                    : Row(
                         children: [
-                          Expanded(child: _ModeCard(title: 'Appointment', icon: Icons.calendar_month_outlined)),
-                          SizedBox(width: 22),
-                          Expanded(child: _ModeCard(title: 'Check-In', icon: Icons.place_outlined)),
+                          const Expanded(
+                            child: _ModeCard(
+                              title: 'Appointment',
+                              icon: Icons.calendar_month_outlined,
+                              enabled: true,
+                            ),
+                          ),
+                          const SizedBox(width: 22),
+                          Expanded(
+                            child: _ModeCard(
+                              title: 'Check-In',
+                              icon: Icons.place_outlined,
+                              enabled: isOutletOpen,
+                            ),
+                          ),
                         ],
                       ),
               ),
@@ -64,52 +89,85 @@ class HomeScreen extends StatelessWidget {
 }
 
 class _ModeCard extends StatelessWidget {
-  const _ModeCard({required this.title, required this.icon});
+  const _ModeCard({
+    required this.title,
+    required this.icon,
+    required this.enabled,
+  });
 
   final String title;
   final IconData icon;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
     final isMobile = context.isMobile;
 
-    return InkWell(
-      onTap: () {
-        if (title == 'Appointment') {
-          context.read<SessionBloc>().setMode(BookingMode.appointment);
-        } else {
-          context.read<SessionBloc>().setMode(BookingMode.checkIn);
-        }
-        context.go(AppRoutes.services);
-      },
-      borderRadius: BorderRadius.circular(24),
-      child: Ink(
-        height: isMobile ? 220 : 370,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          gradient: const LinearGradient(
-            colors: [Color(0xFFEB5770), Color(0xFFE84B67)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+    return Opacity(
+      opacity: enabled ? 1.0 : 0.45,
+      child: InkWell(
+        onTap: enabled
+            ? () {
+                if (title == 'Appointment') {
+                  context.read<SessionBloc>().setMode(BookingMode.appointment);
+                } else {
+                  context.read<SessionBloc>().setMode(BookingMode.checkIn);
+                }
+                context.go(AppRoutes.services);
+              }
+            : null,
+        borderRadius: BorderRadius.circular(24),
+        child: Ink(
+          height: isMobile ? 220 : 370,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: LinearGradient(
+              colors: enabled
+                  ? const [Color(0xFFEB5770), Color(0xFFE84B67)]
+                  : const [Color(0xFFBDBDBD), Color(0xFFBDBDBD)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: enabled
+                    ? const Color(0x30E12242)
+                    : const Color(0x20000000),
+                blurRadius: 24,
+                offset: const Offset(0, 14),
+              ),
+            ],
           ),
-          boxShadow: const [
-            BoxShadow(color: Color(0x30E12242), blurRadius: 24, offset: Offset(0, 14)),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircleAvatar(
-              radius: isMobile ? 28 : 38,
-              backgroundColor: const Color(0x40FFFFFF),
-              child: Icon(icon, size: isMobile ? 24 : 34, color: Colors.white),
-            ),
-            SizedBox(height: isMobile ? 12 : 26),
-            Text(
-              title,
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: isMobile ? 28 : 18),
-            ),
-          ],
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircleAvatar(
+                radius: isMobile ? 28 : 38,
+                backgroundColor: const Color(0x40FFFFFF),
+                child: Icon(
+                  icon,
+                  size: isMobile ? 24 : 34,
+                  color: Colors.white,
+                ),
+              ),
+              SizedBox(height: isMobile ? 12 : 26),
+              Text(
+                title,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: isMobile ? 28 : 18,
+                ),
+              ),
+              if (!enabled) ...[
+                const SizedBox(height: 8),
+                const Text(
+                  'Outlet is closed',
+                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );

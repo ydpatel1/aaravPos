@@ -64,3 +64,12 @@ class SessionCustomerChanged extends SessionEvent {
 class SessionResetRequested extends SessionEvent {
   const SessionResetRequested();
 }
+
+class SessionOutletStatusLoaded extends SessionEvent {
+  const SessionOutletStatusLoaded({required this.isOpen});
+
+  final bool isOpen;
+
+  @override
+  List<Object?> get props => [isOpen];
+}

@@ -16,6 +16,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     on<SessionSlotChanged>(_onSlotChanged);
     on<SessionCustomerChanged>(_onCustomerChanged);
     on<SessionResetRequested>(_onResetRequested);
+    on<SessionOutletStatusLoaded>(_onOutletStatusLoaded);
   }
 
   void _onModeChanged(SessionModeChanged event, Emitter<SessionState> emit) {
@@ -63,7 +64,15 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     SessionResetRequested event,
     Emitter<SessionState> emit,
   ) {
-    emit(const SessionState());
+    // Preserve isOutletOpen across resets so home screen stays correct
+    emit(SessionState(isOutletOpen: state.isOutletOpen));
+  }
+
+  void _onOutletStatusLoaded(
+    SessionOutletStatusLoaded event,
+    Emitter<SessionState> emit,
+  ) {
+    emit(state.copyWith(isOutletOpen: event.isOpen));
   }
 
   // Compatibility helpers
@@ -75,4 +84,6 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   void setSlot(SlotItem slot) => add(SessionSlotChanged(slot));
   void setCustomer(String customer) => add(SessionCustomerChanged(customer));
   void reset() => add(const SessionResetRequested());
+  void setOutletOpen(bool isOpen) =>
+      add(SessionOutletStatusLoaded(isOpen: isOpen));
 }

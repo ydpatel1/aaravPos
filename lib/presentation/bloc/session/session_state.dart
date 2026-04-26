@@ -6,6 +6,7 @@ class SessionState extends Equatable {
   const SessionState({
     this.mode = BookingMode.appointment,
     this.isCheckIn = false,
+    this.isOutletOpen = false,
     this.selectedServices = const <ServiceItem>[],
     this.selectedStaff,
     this.selectedDate,
@@ -15,6 +16,11 @@ class SessionState extends Equatable {
 
   final BookingMode mode;
   final bool isCheckIn;
+
+  /// Reflects isOpen from outlet/status API.
+  /// When false, the Check-In button on HomeScreen is disabled.
+  final bool isOutletOpen;
+
   final List<ServiceItem> selectedServices;
   final StaffMember? selectedStaff;
   final DateTime? selectedDate;
@@ -24,6 +30,7 @@ class SessionState extends Equatable {
   SessionState copyWith({
     BookingMode? mode,
     bool? isCheckIn,
+    bool? isOutletOpen,
     List<ServiceItem>? selectedServices,
     StaffMember? selectedStaff,
     DateTime? selectedDate,
@@ -37,6 +44,7 @@ class SessionState extends Equatable {
     return SessionState(
       mode: mode ?? this.mode,
       isCheckIn: isCheckIn ?? this.isCheckIn,
+      isOutletOpen: isOutletOpen ?? this.isOutletOpen,
       selectedServices: selectedServices ?? this.selectedServices,
       selectedStaff: clearStaff ? null : selectedStaff ?? this.selectedStaff,
       selectedDate: clearDate ? null : selectedDate ?? this.selectedDate,
@@ -50,6 +58,7 @@ class SessionState extends Equatable {
   @override
   List<Object?> get props => [
     mode,
+    isOutletOpen,
     selectedServices,
     selectedStaff,
     selectedDate,

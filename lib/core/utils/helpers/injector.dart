@@ -34,10 +34,10 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(getIt(), getIt()),
   );
-  getIt.registerLazySingleton<AuthBloc>(() => AuthBloc(getIt()));
+  getIt.registerLazySingleton<SessionBloc>(SessionBloc.new);
+  getIt.registerLazySingleton<AuthBloc>(() => AuthBloc(getIt(), getIt()));
 
   getIt.registerLazySingleton<BookingRepository>(BookingRepositoryImpl.new);
-  getIt.registerLazySingleton<SessionBloc>(SessionBloc.new);
   getIt.registerLazySingleton<ServiceBloc>(() => ServiceBloc(getIt()));
   getIt.registerLazySingleton<StaffBloc>(() => StaffBloc(getIt()));
   getIt.registerLazySingleton<SlotBloc>(() => SlotBloc(getIt()));
