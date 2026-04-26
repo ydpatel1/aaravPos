@@ -82,24 +82,27 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ],
                           )
-                        : Row(
-                            children: [
-                              Expanded(
-                                child: _ModeCard(
-                                  title: 'Appointment',
-                                  icon: Icons.calendar_month_outlined,
-                                  enabled: !isOutletOpen,
+                        : Container(
+                            constraints: BoxConstraints(maxWidth: 750),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: _ModeCard(
+                                    title: 'Appointment',
+                                    icon: Icons.calendar_month_outlined,
+                                    enabled: !isOutletOpen,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 22),
-                              Expanded(
-                                child: _ModeCard(
-                                  title: 'Check-In',
-                                  icon: Icons.place_outlined,
-                                  enabled: isOutletOpen,
+                                const SizedBox(width: 22),
+                                Expanded(
+                                  child: _ModeCard(
+                                    title: 'Check-In',
+                                    icon: Icons.place_outlined,
+                                    enabled: isOutletOpen,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           );
                   },
                 ),
