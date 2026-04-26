@@ -3,11 +3,11 @@ import 'package:aaravpos/presentation/bloc/service/service_bloc.dart';
 import 'package:aaravpos/presentation/bloc/session/session_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/router/app_routes.dart';
-import '../../../../core/utils/extensions/context_extension.dart';
 import '../../../../shared/widgets/app_shimmer.dart';
 import '../../../../shared/widgets/common_app_bar.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
@@ -175,25 +175,19 @@ class _ServicesScreenState extends State<ServicesScreen> {
                       if (isExpanded)
                         LayoutBuilder(
                           builder: (context, constraints) {
-                            final cols = constraints.maxWidth < 600
-                                ? 2
-                                : constraints.maxWidth < 1000
-                                ? 2
-                                : 3;
-                            return GridView.builder(
+                            final cols = constraints.maxWidth < 550
+                                ? 2 // Mobile: 2 items per row
+                                : constraints.maxWidth < 900
+                                ? 3 // Tablet: 3 items per row
+                                : 4; // Desktop: 4 items per row
+                            return AlignedGridView.count(
+                              crossAxisCount: cols,
+                              mainAxisSpacing: 12,
+                              crossAxisSpacing: 12,
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
-                              gridDelegate:
-                                  SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: cols,
-                                    crossAxisSpacing: 12,
-                                    mainAxisSpacing: 12,
-                                    childAspectRatio: context.isMobile
-                                        ? 1.5
-                                        : 2.0,
-                                  ),
                               itemCount: entry.value.length,
-                              itemBuilder: (_, i) {
+                              itemBuilder: (context, i) {
                                 final item = entry.value[i];
                                 return ServiceCard(
                                   title: item.name,
@@ -224,14 +218,10 @@ class _ServicesScreenState extends State<ServicesScreen> {
 }
 
 /// Shimmer skeleton that matches the final layout:
-/// search bar → category pill → 3-col grid × 2 rows, repeated × 3 categories
+/// search bar → category pill → responsive grid × 2 rows, repeated × 3 categories
 class _ServicesShimmer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final isMobile = context.isMobile;
-    final cols = isMobile ? 2 : 3;
-    final cardAspect = isMobile ? 1.5 : 2.0;
-
     return AppShimmer(
       child: ListView(
         padding: const EdgeInsets.all(AppSpacing.xl),
@@ -249,6 +239,12 @@ class _ServicesShimmer extends StatelessWidget {
             // Grid: 2 rows × cols cards
             LayoutBuilder(
               builder: (context, constraints) {
+                final cols = constraints.maxWidth < 550
+                    ? 2 // Mobile: 2 items
+                    : constraints.maxWidth < 900
+                    ? 3 // Tablet: 3 items
+                    : 4; // Desktop: 4 items
+                final cardAspect = constraints.maxWidth < 550 ? 1.5 : 2.0;
                 final cardWidth =
                     (constraints.maxWidth - (cols - 1) * 12) / cols;
                 final cardHeight = cardWidth / cardAspect;
