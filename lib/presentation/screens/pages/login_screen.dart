@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/app_routes.dart';
+import '../../../../core/utils/extensions/context_extension.dart';
 import '../../../../core/utils/validators/validators.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
@@ -17,8 +18,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController(text: 'kiosk@oshawa.com');
-  final _passwordController = TextEditingController(text: 'Admin@123');
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
 
   @override
   void initState() {
@@ -58,16 +59,30 @@ class _LoginScreenState extends State<LoginScreen> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 680),
             child: Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(22),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(28),
                 child: BlocConsumer<AuthBloc, AuthState>(
                   listener: (context, state) {
-                    if (state.email.isNotEmpty && _emailController.text != state.email) {
+                    if (state.email.isNotEmpty &&
+                        _emailController.text != state.email) {
                       _emailController.text = state.email;
+                    }
+                    if (state.password.isNotEmpty &&
+                        _passwordController.text != state.password) {
+                      _passwordController.text = state.password;
                     }
                     if (state.status == AuthStatus.authenticated) {
                       context.go(AppRoutes.home);
+                    }
+                    if (state.status == AuthStatus.failure) {
+                      context.showSnackBar(
+                        state.errorMessage ??
+                            'Unable to login. Please try again.',
+                        isError: true,
+                      );
                     }
                   },
                   builder: (context, state) {

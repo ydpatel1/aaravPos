@@ -4,7 +4,6 @@ import 'package:aaravpos/domain/model/staff_member.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-
 part 'session_event.dart';
 part 'session_state.dart';
 
@@ -20,10 +19,18 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   }
 
   void _onModeChanged(SessionModeChanged event, Emitter<SessionState> emit) {
-    emit(state.copyWith(mode: event.mode));
+    emit(
+      state.copyWith(
+        mode: event.mode,
+        isCheckIn: event.mode == BookingMode.checkIn,
+      ),
+    );
   }
 
-  void _onServiceToggled(SessionServiceToggled event, Emitter<SessionState> emit) {
+  void _onServiceToggled(
+    SessionServiceToggled event,
+    Emitter<SessionState> emit,
+  ) {
     final services = List<ServiceItem>.from(state.selectedServices);
     if (services.contains(event.service)) {
       services.remove(event.service);
@@ -45,17 +52,24 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     emit(state.copyWith(selectedSlot: event.slot));
   }
 
-  void _onCustomerChanged(SessionCustomerChanged event, Emitter<SessionState> emit) {
+  void _onCustomerChanged(
+    SessionCustomerChanged event,
+    Emitter<SessionState> emit,
+  ) {
     emit(state.copyWith(selectedCustomer: event.customer));
   }
 
-  void _onResetRequested(SessionResetRequested event, Emitter<SessionState> emit) {
+  void _onResetRequested(
+    SessionResetRequested event,
+    Emitter<SessionState> emit,
+  ) {
     emit(const SessionState());
   }
 
   // Compatibility helpers
   void setMode(BookingMode mode) => add(SessionModeChanged(mode));
-  void toggleService(ServiceItem service) => add(SessionServiceToggled(service));
+  void toggleService(ServiceItem service) =>
+      add(SessionServiceToggled(service));
   void setStaff(StaffMember staff) => add(SessionStaffChanged(staff));
   void setDate(DateTime date) => add(SessionDateChanged(date));
   void setSlot(SlotItem slot) => add(SessionSlotChanged(slot));

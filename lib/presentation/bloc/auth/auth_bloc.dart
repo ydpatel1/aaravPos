@@ -1,4 +1,5 @@
 import 'package:aaravpos/domain/repo/auth_repository.dart';
+import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -23,7 +24,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final email = rememberMe
         ? await _authRepository.getRememberedEmail() ?? ''
         : '';
-    emit(state.copyWith(rememberMe: rememberMe, email: email));
+    final password = rememberMe
+        ? await _authRepository.getRememberedPassword() ?? ''
+        : '';
+    emit(
+      state.copyWith(rememberMe: rememberMe, email: email, password: password),
+    );
   }
 
   void _onRememberMeChanged(RememberMeChanged event, Emitter<AuthState> emit) {
@@ -42,14 +48,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         rememberMe: state.rememberMe,
       );
       emit(
-        state.copyWith(status: AuthStatus.authenticated, email: event.email),
-      );
-    } catch (_) {
-      emit(
         state.copyWith(
-          status: AuthStatus.failure,
-          errorMessage: 'Unable to login. Please try again.',
+          status: AuthStatus.authenticated,
+          email: event.email,
+          password: state.rememberMe ? event.password : '',
         ),
+      );
+    } catch (error) {
+      print('Login error: $error');
+      final errorMessage = (error is DioException)
+          ? error.response?.data['message'] ??
+                'Unable to login. Please try again.'
+          : 'Unable to login. Please try again.';
+      emit(
+        state.copyWith(status: AuthStatus.failure, errorMessage: errorMessage),
       );
     }
   }

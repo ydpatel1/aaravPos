@@ -5,6 +5,7 @@ enum BookingMode { appointment, checkIn }
 class SessionState extends Equatable {
   const SessionState({
     this.mode = BookingMode.appointment,
+    this.isCheckIn = false,
     this.selectedServices = const <ServiceItem>[],
     this.selectedStaff,
     this.selectedDate,
@@ -13,6 +14,7 @@ class SessionState extends Equatable {
   });
 
   final BookingMode mode;
+  final bool isCheckIn;
   final List<ServiceItem> selectedServices;
   final StaffMember? selectedStaff;
   final DateTime? selectedDate;
@@ -21,6 +23,7 @@ class SessionState extends Equatable {
 
   SessionState copyWith({
     BookingMode? mode,
+    bool? isCheckIn,
     List<ServiceItem>? selectedServices,
     StaffMember? selectedStaff,
     DateTime? selectedDate,
@@ -33,22 +36,24 @@ class SessionState extends Equatable {
   }) {
     return SessionState(
       mode: mode ?? this.mode,
+      isCheckIn: isCheckIn ?? this.isCheckIn,
       selectedServices: selectedServices ?? this.selectedServices,
       selectedStaff: clearStaff ? null : selectedStaff ?? this.selectedStaff,
       selectedDate: clearDate ? null : selectedDate ?? this.selectedDate,
       selectedSlot: clearSlot ? null : selectedSlot ?? this.selectedSlot,
-      selectedCustomer:
-          clearCustomer ? null : selectedCustomer ?? this.selectedCustomer,
+      selectedCustomer: clearCustomer
+          ? null
+          : selectedCustomer ?? this.selectedCustomer,
     );
   }
 
   @override
   List<Object?> get props => [
-        mode,
-        selectedServices,
-        selectedStaff,
-        selectedDate,
-        selectedSlot,
-        selectedCustomer,
-      ];
+    mode,
+    selectedServices,
+    selectedStaff,
+    selectedDate,
+    selectedSlot,
+    selectedCustomer,
+  ];
 }

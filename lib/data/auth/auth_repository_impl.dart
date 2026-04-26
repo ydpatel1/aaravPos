@@ -1,5 +1,6 @@
-import 'package:aaravpos/domain/repo/auth_repository.dart';
 import 'package:aaravpos/domain/model/auth_result.dart';
+import 'package:aaravpos/domain/model/outlet_status.dart';
+import 'package:aaravpos/domain/repo/auth_repository.dart';
 
 import '../../core/storage/secure_storage.dart';
 
@@ -22,18 +23,41 @@ class AuthRepositoryImpl implements AuthRepository {
       password: password,
     );
     await _secureStorage.saveToken(token);
-    await _secureStorage.saveRememberMe(rememberMe);
-    if (rememberMe) {
-      await _secureStorage.saveEmail(email);
+    try {
+      await _secureStorage.saveRememberMe(rememberMe);
+      if (rememberMe) {
+        await _secureStorage.saveEmail(email);
+        await _secureStorage.savePassword(password);
+      } else {
+        await _secureStorage.deleteEmail();
+        await _secureStorage.deletePassword();
+      }
+
+      final outletStatus = await _remoteDataSource.fetchOutletStatus();
+      await _secureStorage.saveOutletStatus(
+        outletStatus.tenantId,
+        outletStatus.outletId,
+      );
+    } catch (_) {
+      await _secureStorage.clearToken();
+      rethrow;
     }
+
     return AuthResult(token: token, email: email);
   }
+
+  @override
+  Future<OutletStatus> fetchOutletStatus() =>
+      _remoteDataSource.fetchOutletStatus();
 
   @override
   Future<bool> getRememberMe() => _secureStorage.getRememberMe();
 
   @override
   Future<String?> getRememberedEmail() => _secureStorage.getEmail();
+
+  @override
+  Future<String?> getRememberedPassword() => _secureStorage.getPassword();
 
   @override
   Future<void> logout() => _secureStorage.clearSession();

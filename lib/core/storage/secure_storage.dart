@@ -4,7 +4,7 @@ import '../constants/app_constants.dart';
 
 class SecureStorage {
   SecureStorage({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage();
+    : _storage = storage ?? const FlutterSecureStorage();
 
   final FlutterSecureStorage _storage;
 
@@ -15,10 +15,8 @@ class SecureStorage {
 
   Future<void> clearToken() => _storage.delete(key: AppConstants.tokenKey);
 
-  Future<void> saveRememberMe(bool value) => _storage.write(
-    key: AppConstants.rememberMeKey,
-    value: value.toString(),
-  );
+  Future<void> saveRememberMe(bool value) =>
+      _storage.write(key: AppConstants.rememberMeKey, value: value.toString());
 
   Future<bool> getRememberMe() async {
     final value = await _storage.read(key: AppConstants.rememberMeKey);
@@ -30,8 +28,29 @@ class SecureStorage {
 
   Future<String?> getEmail() => _storage.read(key: AppConstants.userEmailKey);
 
+  Future<void> savePassword(String password) =>
+      _storage.write(key: AppConstants.userPasswordKey, value: password);
+
+  Future<String?> getPassword() =>
+      _storage.read(key: AppConstants.userPasswordKey);
+
+  Future<void> deleteEmail() => _storage.delete(key: AppConstants.userEmailKey);
+
+  Future<void> deletePassword() =>
+      _storage.delete(key: AppConstants.userPasswordKey);
+
+  Future<void> saveOutletStatus(String tenantId, String outletId) async {
+    await _storage.write(key: AppConstants.tenantIdKey, value: tenantId);
+    await _storage.write(key: AppConstants.outletIdKey, value: outletId);
+  }
+
+  Future<String?> getTenantId() => _storage.read(key: AppConstants.tenantIdKey);
+
+  Future<String?> getOutletId() => _storage.read(key: AppConstants.outletIdKey);
+
   Future<void> clearSession() async {
     await _storage.delete(key: AppConstants.tokenKey);
-    await _storage.delete(key: AppConstants.userEmailKey);
+    await _storage.delete(key: AppConstants.tenantIdKey);
+    await _storage.delete(key: AppConstants.outletIdKey);
   }
 }
