@@ -1,11 +1,14 @@
+import 'package:aaravpos/core/utils/extensions/space_extension.dart';
 import 'package:aaravpos/presentation/bloc/auth/auth_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/app_routes.dart';
+import '../../../../core/theme/app_styles.dart';
 import '../../../../core/utils/extensions/context_extension.dart';
 import '../../../../core/utils/validators/validators.dart';
+import '../../../../shared/widgets/aarav_pos_logo.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 
@@ -56,104 +59,142 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 680),
-            child: Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(22),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(28),
-                child: BlocConsumer<AuthBloc, AuthState>(
-                  listener: (context, state) {
-                    if (state.email.isNotEmpty &&
-                        _emailController.text != state.email) {
-                      _emailController.text = state.email;
-                    }
-                    if (state.password.isNotEmpty &&
-                        _passwordController.text != state.password) {
-                      _passwordController.text = state.password;
-                    }
-                    if (state.status == AuthStatus.authenticated) {
-                      context.go(AppRoutes.home);
-                    }
-                    if (state.status == AuthStatus.failure) {
-                      context.showSnackBar(
-                        state.errorMessage ??
-                            'Unable to login. Please try again.',
-                        isError: true,
-                      );
-                    }
-                  },
-                  builder: (context, state) {
-                    return Form(
-                      key: _formKey,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Center(
-                            child: Text(
-                              'AaravPOS',
-                              style: TextStyle(
-                                fontSize: 44,
-                                color: Color(0xFFE12242),
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 22),
-                          const Text('Email Address'),
-                          const SizedBox(height: 8),
-                          AppTextField(
-                            label: 'Email',
-                            controller: _emailController,
-                            validator: Validators.email,
-                            keyboardType: TextInputType.emailAddress,
-                          ),
-                          const SizedBox(height: 18),
-                          const Text('Password'),
-                          const SizedBox(height: 8),
-                          AppTextField(
-                            label: 'Password',
-                            controller: _passwordController,
-                            validator: Validators.password,
-                            obscureText: true,
-                          ),
-                          const SizedBox(height: 10),
-                          Row(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 500),
+                child: Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(22),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(28),
+                    child: BlocConsumer<AuthBloc, AuthState>(
+                      listener: (context, state) {
+                        if (state.email.isNotEmpty &&
+                            _emailController.text != state.email) {
+                          _emailController.text = state.email;
+                        }
+                        if (state.password.isNotEmpty &&
+                            _passwordController.text != state.password) {
+                          _passwordController.text = state.password;
+                        }
+                        if (state.status == AuthStatus.authenticated) {
+                          context.go(AppRoutes.home);
+                        }
+                        if (state.status == AuthStatus.failure) {
+                          context.showSnackBar(
+                            state.errorMessage ??
+                                'Unable to login. Please try again.',
+                            isError: true,
+                          );
+                        }
+                      },
+                      builder: (context, state) {
+                        return Form(
+                          key: _formKey,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Checkbox(
-                                value: state.rememberMe,
-                                onChanged: (value) => context
-                                    .read<AuthBloc>()
-                                    .setRememberMe(value ?? false),
+                              const Center(
+                                child: AaravPosLogo(size: LogoSize.large),
                               ),
-                              const Text('Remember Me'),
-                              const Spacer(),
+                              15.vs,
                               const Text(
-                                'Forgot password?',
-                                style: TextStyle(color: Color(0xFFE12242)),
+                                'Email Address',
+                                style: AppStyles.fieldLabel,
+                              ),
+                              8.vs,
+                              AppTextField(
+                                hint: "Enter email",
+                                controller: _emailController,
+                                validator: Validators.email,
+                                prefix: Icon(Icons.email),
+                                keyboardType: TextInputType.emailAddress,
+                              ),
+                              18.vs,
+                              const Text(
+                                'Password',
+                                style: AppStyles.fieldLabel,
+                              ),
+                              8.vs,
+                              BlocBuilder<AuthBloc, AuthState>(
+                                buildWhen: (prev, curr) =>
+                                    prev.isPasswordVisible !=
+                                    curr.isPasswordVisible,
+                                builder: (context, state) {
+                                  return AppTextField(
+                                    controller: _passwordController,
+                                    hint: "Enter password",
+                                    validator: Validators.password,
+                                    prefix: const Icon(Icons.lock),
+                                    obscureText: !state.isPasswordVisible,
+                                    suffix: IconButton(
+                                      icon: Icon(
+                                        state.isPasswordVisible
+                                            ? Icons.visibility_off_outlined
+                                            : Icons.visibility_outlined,
+                                      ),
+                                      onPressed: context
+                                          .read<AuthBloc>()
+                                          .togglePasswordVisibility,
+                                    ),
+                                  );
+                                },
+                              ),
+                              15.vs,
+                              Row(
+                                children: [
+                                  Transform.translate(
+                                    offset: Offset(-5, 0),
+                                    child: Row(
+                                      children: [
+                                        SizedBox(
+                                          height: 25,
+                                          width: 30,
+                                          child: Checkbox(
+                                            value: state.rememberMe,
+                                            onChanged: (value) => context
+                                                .read<AuthBloc>()
+                                                .setRememberMe(value ?? false),
+                                          ),
+                                        ),
+                                        const Text(
+                                          'Remember Me',
+                                          style: AppStyles.fieldLabel,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
+                                  const Spacer(),
+                                  const Text(
+                                    'Forgot password?',
+                                    style: TextStyle(color: Color(0xFFE12242)),
+                                  ),
+                                ],
+                              ),
+                              15.vs,
+                              AppButton(
+                                label: 'Sign In',
+                                isLoading: state.status == AuthStatus.loading,
+                                onPressed: _onLogin,
+                              ),
+                              12.vs,
+                              const Center(
+                                child: Text(
+                                  'v0.0.1',
+                                  style: TextStyle(color: Color(0xFF9A9A9A)),
+                                ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          AppButton(
-                            label: 'Sign In',
-                            isLoading: state.status == AuthStatus.loading,
-                            onPressed: _onLogin,
-                          ),
-                          const SizedBox(height: 12),
-                          const Center(
-                            child: Text(
-                              'v0.0.1',
-                              style: TextStyle(color: Color(0xFF9A9A9A)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                        );
+                      },
+                    ),
+                  ),
                 ),
               ),
             ),

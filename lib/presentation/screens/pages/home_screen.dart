@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/app_routes.dart';
+import '../../../../shared/widgets/aarav_pos_logo.dart';
 import '../../../../core/utils/extensions/context_extension.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -14,7 +15,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final isMobile = context.isMobile;
     final isOutletOpen = context.watch<SessionBloc>().state.isOutletOpen;
-
+    print("check this isOutletOpen ${isOutletOpen}");
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFFF1F1F2),
@@ -32,25 +33,16 @@ class HomeScreen extends StatelessWidget {
           child: Column(
             children: [
               const SizedBox(height: 12),
-              const Center(
-                child: Text(
-                  'AaravPOS',
-                  style: TextStyle(
-                    color: Color(0xFFE12242),
-                    fontWeight: FontWeight.w800,
-                    fontSize: 28,
-                  ),
-                ),
-              ),
+              const Center(child: AaravPosLogo()),
               SizedBox(height: isMobile ? 20 : 30),
               Expanded(
                 child: isMobile
                     ? ListView(
                         children: [
-                          const _ModeCard(
+                          _ModeCard(
                             title: 'Appointment',
                             icon: Icons.calendar_month_outlined,
-                            enabled: true,
+                            enabled: !isOutletOpen,
                           ),
                           const SizedBox(height: 16),
                           _ModeCard(
@@ -62,11 +54,11 @@ class HomeScreen extends StatelessWidget {
                       )
                     : Row(
                         children: [
-                          const Expanded(
+                          Expanded(
                             child: _ModeCard(
                               title: 'Appointment',
                               icon: Icons.calendar_month_outlined,
-                              enabled: true,
+                              enabled: !isOutletOpen,
                             ),
                           ),
                           const SizedBox(width: 22),

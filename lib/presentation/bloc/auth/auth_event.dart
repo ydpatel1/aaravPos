@@ -33,3 +33,7 @@ class AuthLoginRequested extends AuthEvent {
 class AuthLogoutRequested extends AuthEvent {
   const AuthLogoutRequested();
 }
+
+class PasswordVisibilityToggled extends AuthEvent {
+  const PasswordVisibilityToggled();
+}

@@ -13,6 +13,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<RememberMeChanged>(_onRememberMeChanged);
     on<AuthLoginRequested>(_onLoginRequested);
     on<AuthLogoutRequested>(_onLogoutRequested);
+    on<PasswordVisibilityToggled>(_onPasswordVisibilityToggled);
   }
 
   final AuthRepository _authRepository;
@@ -89,10 +90,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(state.copyWith(status: AuthStatus.unauthenticated));
   }
 
+  void _onPasswordVisibilityToggled(
+    PasswordVisibilityToggled event,
+    Emitter<AuthState> emit,
+  ) {
+    emit(state.copyWith(isPasswordVisible: !state.isPasswordVisible));
+  }
+
   // Compatibility helpers for existing UI calls.
   Future<void> initialize() async => add(const AuthInitialized());
   void setRememberMe(bool value) => add(RememberMeChanged(value));
   Future<void> login({required String email, required String password}) async =>
       add(AuthLoginRequested(email: email, password: password));
   Future<void> logout() async => add(const AuthLogoutRequested());
+  void togglePasswordVisibility() => add(const PasswordVisibilityToggled());
 }
