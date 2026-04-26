@@ -8,7 +8,7 @@ abstract class AuthRepository {
     required bool rememberMe,
   });
 
-  Future<OutletStatus> fetchOutletStatus();
+  Future<OutletStatus> fetchOutletStatus({required String outletId});
 
   Future<void> logout();
 
@@ -17,4 +17,8 @@ abstract class AuthRepository {
   Future<String?> getRememberedEmail();
 
   Future<String?> getRememberedPassword();
+
+  Future<String?> getStoredOutletId();
+
+  Future<String?> getStoredToken();
 }

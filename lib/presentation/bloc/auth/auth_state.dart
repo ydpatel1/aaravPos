@@ -1,6 +1,13 @@
 part of 'auth_bloc.dart';
 
-enum AuthStatus { initial, loading, authenticated, unauthenticated, failure }
+enum AuthStatus {
+  initial,
+  outletLoading,
+  loading,
+  authenticated,
+  unauthenticated,
+  failure,
+}
 
 class AuthState extends Equatable {
   const AuthState({

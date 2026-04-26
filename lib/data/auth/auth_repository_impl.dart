@@ -17,20 +17,15 @@ class AuthRepositoryImpl implements AuthRepository {
     required String password,
     required bool rememberMe,
   }) async {
-    // Login and get token + kiosk info in one call
     final loginResult = await _remoteDataSource.login(
       email: email,
       password: password,
     );
 
-    // Persist token
     await _secureStorage.saveToken(loginResult.token);
-
-    // Persist tenantId and outletId from kiosk object
     await _secureStorage.saveTenantId(loginResult.tenantId);
     await _secureStorage.saveOutletId(loginResult.outletId);
 
-    // Persist remember-me credentials
     await _secureStorage.saveRememberMe(rememberMe);
     if (rememberMe) {
       await _secureStorage.saveEmail(email);
@@ -44,8 +39,11 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<OutletStatus> fetchOutletStatus() =>
-      _remoteDataSource.fetchOutletStatus();
+  Future<OutletStatus> fetchOutletStatus({required String outletId}) =>
+      _remoteDataSource.fetchOutletStatus(outletId: outletId);
+
+  @override
+  Future<void> logout() => _secureStorage.clearSession();
 
   @override
   Future<bool> getRememberMe() => _secureStorage.getRememberMe();
@@ -57,5 +55,8 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<String?> getRememberedPassword() => _secureStorage.getPassword();
 
   @override
-  Future<void> logout() => _secureStorage.clearSession();
+  Future<String?> getStoredOutletId() => _secureStorage.getOutletId();
+
+  @override
+  Future<String?> getStoredToken() => _secureStorage.getToken();
 }

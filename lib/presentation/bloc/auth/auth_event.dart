@@ -11,6 +11,10 @@ class AuthInitialized extends AuthEvent {
   const AuthInitialized();
 }
 
+class AppStarted extends AuthEvent {
+  const AppStarted();
+}
+
 class RememberMeChanged extends AuthEvent {
   const RememberMeChanged(this.value);
 
@@ -36,4 +40,8 @@ class AuthLogoutRequested extends AuthEvent {
 
 class PasswordVisibilityToggled extends AuthEvent {
   const PasswordVisibilityToggled();
+}
+
+class OutletStatusRefreshRequested extends AuthEvent {
+  const OutletStatusRefreshRequested();
 }

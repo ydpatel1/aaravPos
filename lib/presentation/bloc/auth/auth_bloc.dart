@@ -10,6 +10,7 @@ part 'auth_state.dart';
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   AuthBloc(this._authRepository, this._sessionBloc) : super(const AuthState()) {
     on<AuthInitialized>(_onInitialized);
+    on<OutletStatusRefreshRequested>(_onOutletStatusRefresh);
     on<RememberMeChanged>(_onRememberMeChanged);
     on<AuthLoginRequested>(_onLoginRequested);
     on<AuthLogoutRequested>(_onLogoutRequested);
@@ -35,6 +36,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     );
   }
 
+  /// Called by HomeScreen on mount when arriving via token (app restart).
+  /// Fetches outlet/status and updates SessionBloc.
+  Future<void> _onOutletStatusRefresh(
+    OutletStatusRefreshRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(state.copyWith(status: AuthStatus.outletLoading));
+    await _fetchAndApplyOutletStatus();
+    emit(state.copyWith(status: AuthStatus.authenticated));
+  }
+
   void _onRememberMeChanged(RememberMeChanged event, Emitter<AuthState> emit) {
     emit(state.copyWith(rememberMe: event.value));
   }
@@ -45,21 +57,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(state.copyWith(status: AuthStatus.loading, errorMessage: null));
     try {
-      // Login — stores token, tenantId, outletId in secure storage
       await _authRepository.login(
         email: event.email,
         password: event.password,
         rememberMe: state.rememberMe,
       );
 
-      // Fetch outlet open/close status and push to SessionBloc
-      try {
-        final outletStatus = await _authRepository.fetchOutletStatus();
-        _sessionBloc.setOutletOpen(outletStatus.isOpen);
-      } catch (_) {
-        // Non-fatal: outlet status failure should not block login
-        _sessionBloc.setOutletOpen(false);
-      }
+      // Fetch outlet status before navigating so home renders correctly
+      await _fetchAndApplyOutletStatus();
 
       emit(
         state.copyWith(
@@ -85,7 +90,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthLogoutRequested event,
     Emitter<AuthState> emit,
   ) async {
-    await _authRepository.logout();
+    await _authRepository.logout(); // clears token + tenantId + outletId
     _sessionBloc.setOutletOpen(false);
     emit(state.copyWith(status: AuthStatus.unauthenticated));
   }
@@ -97,11 +102,30 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(state.copyWith(isPasswordVisible: !state.isPasswordVisible));
   }
 
-  // Compatibility helpers for existing UI calls.
+  Future<void> _fetchAndApplyOutletStatus() async {
+    try {
+      final outletId = await _authRepository.getStoredOutletId();
+      if (outletId != null) {
+        final outletStatus = await _authRepository.fetchOutletStatus(
+          outletId: outletId,
+        );
+        _sessionBloc.add(
+          SessionOutletStatusLoaded(isOpen: outletStatus.isOpen),
+        );
+      } else {
+        _sessionBloc.setOutletOpen(false);
+      }
+    } catch (_) {
+      _sessionBloc.setOutletOpen(false);
+    }
+  }
+
+  // Compatibility helpers
   Future<void> initialize() async => add(const AuthInitialized());
   void setRememberMe(bool value) => add(RememberMeChanged(value));
   Future<void> login({required String email, required String password}) async =>
       add(AuthLoginRequested(email: email, password: password));
   Future<void> logout() async => add(const AuthLogoutRequested());
   void togglePasswordVisibility() => add(const PasswordVisibilityToggled());
+  void refreshOutletStatus() => add(const OutletStatusRefreshRequested());
 }

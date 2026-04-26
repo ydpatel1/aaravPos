@@ -65,8 +65,11 @@ class AuthRemoteDataSource {
     }
   }
 
-  Future<OutletStatus> fetchOutletStatus() async {
-    final response = await _apiService.get('outlet/status');
+  Future<OutletStatus> fetchOutletStatus({required String outletId}) async {
+    final response = await _apiService.get(
+      'outlet/status',
+      queryParameters: <String, dynamic>{'outletId': outletId},
+    );
     final data = response.data;
     if (data is Map<String, dynamic>) {
       return OutletStatus.fromJson(data);

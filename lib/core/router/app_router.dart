@@ -1,3 +1,5 @@
+import 'package:aaravpos/core/storage/secure_storage.dart';
+import 'package:aaravpos/core/utils/helpers/injector.dart';
 import 'package:aaravpos/presentation/screens/pages/consent_screen.dart';
 import 'package:aaravpos/presentation/screens/pages/date_screen.dart';
 import 'package:aaravpos/presentation/screens/pages/details_screen.dart';
@@ -15,28 +17,39 @@ import 'app_routes.dart';
 class AppRouter {
   static final GoRouter router = GoRouter(
     initialLocation: AppRoutes.login,
+    redirect: (context, state) async {
+      // Only run on cold start (navigating to login or root)
+      if (state.matchedLocation != AppRoutes.login) return null;
+
+      final token = await getIt<SecureStorage>().getToken();
+      if (token != null && token.isNotEmpty) {
+        // Token exists — go straight to home, home screen handles outlet status
+        return AppRoutes.home;
+      }
+      return null; // No token — stay on login
+    },
     routes: [
-      GoRoute(path: AppRoutes.login, builder: (_, __) => const LoginScreen()),
-      GoRoute(path: AppRoutes.home, builder: (_, __) => const HomeScreen()),
+      GoRoute(path: AppRoutes.login, builder: (_, _) => const LoginScreen()),
+      GoRoute(path: AppRoutes.home, builder: (_, _) => const HomeScreen()),
       GoRoute(
         path: AppRoutes.services,
-        builder: (_, __) => const ServicesScreen(),
+        builder: (_, _) => const ServicesScreen(),
       ),
-      GoRoute(path: AppRoutes.staff, builder: (_, __) => const StaffScreen()),
-      GoRoute(path: AppRoutes.date, builder: (_, __) => const DateScreen()),
-      GoRoute(path: AppRoutes.slots, builder: (_, __) => const SlotScreen()),
-      GoRoute(path: AppRoutes.review, builder: (_, __) => const ReviewScreen()),
+      GoRoute(path: AppRoutes.staff, builder: (_, _) => const StaffScreen()),
+      GoRoute(path: AppRoutes.date, builder: (_, _) => const DateScreen()),
+      GoRoute(path: AppRoutes.slots, builder: (_, _) => const SlotScreen()),
+      GoRoute(path: AppRoutes.review, builder: (_, _) => const ReviewScreen()),
       GoRoute(
         path: AppRoutes.consent,
-        builder: (_, __) => const ConsentScreen(),
+        builder: (_, _) => const ConsentScreen(),
       ),
       GoRoute(
         path: AppRoutes.success,
-        builder: (_, __) => const SuccessScreen(),
+        builder: (_, _) => const SuccessScreen(),
       ),
       GoRoute(
         path: AppRoutes.details,
-        builder: (_, __) => const DetailsScreen(),
+        builder: (_, _) => const DetailsScreen(),
       ),
     ],
   );
