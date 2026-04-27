@@ -1,4 +1,5 @@
 import 'package:aaravpos/presentation/bloc/session/session_bloc.dart';
+import 'package:aaravpos/presentation/bloc/slot/slot_bloc.dart';
 import 'package:aaravpos/presentation/bloc/staff/staff_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -27,6 +28,106 @@ class _StaffScreenState extends State<StaffScreen> {
     context.read<StaffBloc>().fetchStaff();
   }
 
+  void _handleContinue() async {
+    final session = context.read<SessionBloc>().state;
+
+    if (session.mode == BookingMode.checkIn) {
+      // Check-In mode: Set today's date and auto-select nearest slot
+      final now = DateTime.now();
+      context.read<SessionBloc>().setDate(now);
+
+      // Fetch slots for today
+      final staffId = session.selectedStaff?.id;
+      if (staffId == null) return;
+
+      // Show loading dialog
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) =>
+              const Center(child: CircularProgressIndicator()),
+        );
+      }
+
+      // Fetch slots
+      context.read<SlotBloc>().add(
+        SlotsFetched(staffId: staffId, selectedDate: now),
+      );
+
+      // Wait for slots to load with a listener
+      await Future.delayed(const Duration(milliseconds: 1500));
+
+      if (mounted) {
+        // Close loading dialog
+        Navigator.of(context).pop();
+
+        final slotState = context.read<SlotBloc>().state;
+
+        debugPrint('🔍 Slots loaded: ${slotState.items.length} total slots');
+
+        if (slotState.items.isNotEmpty) {
+          // Find nearest available future slot
+          final currentTime = DateTime.now();
+
+          debugPrint(
+            '🕐 Current time: ${currentTime.hour}:${currentTime.minute}',
+          );
+
+          // Filter available slots that are in the future
+          final futureSlots = slotState.items.where((slot) {
+            if (!slot.available) {
+              debugPrint(
+                '❌ Slot ${slot.startTime} not available (booked: ${slot.isBooked})',
+              );
+              return false;
+            }
+
+            final slotDateTime = slot.toDateTime(now);
+            if (slotDateTime == null) {
+              debugPrint('❌ Slot ${slot.startTime} - failed to parse time');
+              return false;
+            }
+
+            final isFuture = slotDateTime.isAfter(currentTime);
+            debugPrint(
+              '${isFuture ? "✅" : "❌"} Slot ${slot.startTime} - ${isFuture ? "future" : "past"}',
+            );
+
+            return isFuture;
+          }).toList();
+
+          debugPrint('📋 Found ${futureSlots.length} future available slots');
+
+          if (futureSlots.isNotEmpty) {
+            // Sort by time to get the nearest one
+            futureSlots.sort((a, b) {
+              final aTime = a.toDateTime(now);
+              final bTime = b.toDateTime(now);
+              if (aTime == null || bTime == null) return 0;
+              return aTime.compareTo(bTime);
+            });
+
+            // Auto-select the nearest future slot
+            final selectedSlot = futureSlots.first;
+            debugPrint('✅ Auto-selected slot: ${selectedSlot.startTime}');
+            context.read<SessionBloc>().setSlot(selectedSlot);
+          } else {
+            debugPrint('⚠️ No future slots available');
+          }
+        } else {
+          debugPrint('⚠️ No slots returned from API');
+        }
+
+        // Navigate directly to review
+        context.push(AppRoutes.review);
+      }
+    } else {
+      // Appointment mode: Go to date selection
+      context.push(AppRoutes.date);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = context.watch<SessionBloc>().state;
@@ -44,13 +145,7 @@ class _StaffScreenState extends State<StaffScreen> {
         subtitle: '${session.selectedServices.length} Service Selected',
         primaryLabel: 'Continue',
         primaryEnabled: session.selectedStaff != null,
-        onPrimary: () {
-          if (session.mode == BookingMode.checkIn) {
-            context.push(AppRoutes.review);
-          } else {
-            context.push(AppRoutes.date);
-          }
-        },
+        onPrimary: _handleContinue,
       ),
       body: Padding(
         padding: const EdgeInsets.all(AppSpacing.xl),

@@ -195,6 +195,18 @@ class BookingRemoteDataSource {
   }
 
   /// GET staff/slots/$staffId?date=$dateStr
+  ///
+  /// New API Response Structure:
+  /// {
+  ///   "success": true,
+  ///   "data": {
+  ///     "groups": {
+  ///       "morning": [...],
+  ///       "afternoon": [...],
+  ///       "evening": [...]
+  ///     }
+  ///   }
+  /// }
   Future<List<SlotItem>> fetchSlots({
     required String staffId,
     required DateTime date,
@@ -206,18 +218,39 @@ class BookingRemoteDataSource {
         'staff/slots/$staffId',
         queryParameters: <String, dynamic>{'date': dateStr},
       );
+
       final body = response.data;
-      if (body is! List)
-        throw Exception('Invalid response format: expected List');
+      if (body is! Map<String, dynamic>) {
+        throw Exception('Invalid response format: expected Map');
+      }
+
+      final data = body['data'] as Map<String, dynamic>?;
+      if (data == null) {
+        throw Exception('No data in response');
+      }
+
+      final groups = data['groups'] as Map<String, dynamic>?;
+      if (groups == null) {
+        throw Exception('No groups in response');
+      }
+
       final items = <SlotItem>[];
-      for (final slot in body) {
-        if (slot is! Map<String, dynamic>) continue;
-        try {
-          items.add(SlotItem.fromJson(slot));
-        } catch (e) {
-          continue;
+
+      // Parse slots from all groups (morning, afternoon, evening)
+      for (final groupKey in ['morning', 'afternoon', 'evening']) {
+        final groupSlots = groups[groupKey];
+        if (groupSlots is List) {
+          for (final slot in groupSlots) {
+            if (slot is! Map<String, dynamic>) continue;
+            try {
+              items.add(SlotItem.fromJson(slot));
+            } catch (e) {
+              continue;
+            }
+          }
         }
       }
+
       return items;
     } catch (e) {
       throw Exception('Failed to fetch slots: ${e.toString()}');

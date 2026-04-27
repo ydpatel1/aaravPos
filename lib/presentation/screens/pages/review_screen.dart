@@ -48,8 +48,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
     return Scaffold(
       appBar: const CommonAppBar(title: 'Review & Confirm'),
       bottomNavigationBar: KioskBottomBar(
-        total: 'Total : \$215.00',
-        subtitle: '2 Service Selected',
+        total: 'Total: ${session.formattedTotal}',
+        subtitle: '${session.selectedServices.length} Service Selected',
         secondaryLabel: 'Cancel',
         onSecondary: () => context.pop(),
         primaryLabel: 'Continue',
@@ -127,12 +127,36 @@ class _ReviewScreenState extends State<ReviewScreen> {
                   ),
                   const Divider(),
                   const SizedBox(height: 12),
-                  Text(
-                    'Date: ${session.selectedDate?.toIso8601String().split('T').first ?? '23-04-2026'}',
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.calendar_today,
+                        size: 18,
+                        color: Color(0xFF737373),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        session.selectedDate != null
+                            ? '${session.selectedDate!.day.toString().padLeft(2, '0')}-${session.selectedDate!.month.toString().padLeft(2, '0')}-${session.selectedDate!.year}'
+                            : 'No date selected',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    'Time: ${session.selectedSlot?.startTime ?? '11:00 AM'}',
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.access_time,
+                        size: 18,
+                        color: Color(0xFF737373),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        session.selectedSlot?.startTime ?? 'No time selected',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    ],
                   ),
                 ],
               ),
