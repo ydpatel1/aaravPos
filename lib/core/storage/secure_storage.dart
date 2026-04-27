@@ -53,10 +53,27 @@ class SecureStorage {
 
   Future<String?> getOutletId() => _storage.read(key: AppConstants.outletIdKey);
 
+  Future<void> deleteTenantId() =>
+      _storage.delete(key: AppConstants.tenantIdKey);
+
+  Future<void> deleteOutletId() =>
+      _storage.delete(key: AppConstants.outletIdKey);
+
+  // ── User ID ────────────────────────────────────────────────────────────────
+  Future<void> saveUserId(String userId) =>
+      _storage.write(key: 'userId', value: userId);
+
+  Future<String?> getUserId() => _storage.read(key: 'userId');
+
+  Future<void> deleteUserId() => _storage.delete(key: 'userId');
+
   // ── Clear All ──────────────────────────────────────────────────────────────
+  Future<void> deleteToken() => _storage.delete(key: AppConstants.tokenKey);
+
   Future<void> clearSession() async {
-    await _storage.delete(key: AppConstants.tokenKey);
-    await _storage.delete(key: AppConstants.tenantIdKey);
-    await _storage.delete(key: AppConstants.outletIdKey);
+    await deleteToken();
+    await deleteTenantId();
+    await deleteOutletId();
+    await deleteUserId();
   }
 }

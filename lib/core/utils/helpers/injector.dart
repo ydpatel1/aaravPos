@@ -12,6 +12,7 @@ import 'package:aaravpos/presentation/bloc/service/service_bloc.dart';
 import 'package:aaravpos/presentation/bloc/session/session_bloc.dart';
 import 'package:aaravpos/presentation/bloc/slot/slot_bloc.dart';
 import 'package:aaravpos/presentation/bloc/staff/staff_bloc.dart';
+import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../network/api_service.dart';
@@ -20,13 +21,17 @@ import '../../storage/secure_storage.dart';
 
 final GetIt getIt = GetIt.instance;
 
-Future<void> configureDependencies() async {
+Future<void> configureDependencies(
+  GlobalKey<NavigatorState> navigatorKey,
+) async {
   if (getIt.isRegistered<SecureStorage>()) {
     return;
   }
 
   getIt.registerLazySingleton<SecureStorage>(SecureStorage.new);
-  getIt.registerLazySingleton<DioClient>(() => DioClient(getIt()));
+  getIt.registerLazySingleton<DioClient>(
+    () => DioClient(getIt(), navigatorKey: navigatorKey),
+  );
   getIt.registerLazySingleton<ApiService>(() => ApiService(getIt()));
 
   getIt.registerLazySingleton<AuthRemoteDataSource>(

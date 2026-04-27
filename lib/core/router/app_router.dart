@@ -10,12 +10,17 @@ import 'package:aaravpos/presentation/screens/pages/services_screen.dart';
 import 'package:aaravpos/presentation/screens/pages/slot_screen.dart';
 import 'package:aaravpos/presentation/screens/pages/staff_screen.dart';
 import 'package:aaravpos/presentation/screens/pages/success_screen.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'app_routes.dart';
 
 class AppRouter {
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+
   static final GoRouter router = GoRouter(
+    navigatorKey: navigatorKey,
     initialLocation: AppRoutes.login,
     redirect: (context, state) async {
       // Only run on cold start (navigating to login or root)

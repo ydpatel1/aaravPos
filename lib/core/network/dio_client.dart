@@ -1,12 +1,16 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
+
 import '../constants/app_constants.dart';
 import '../storage/secure_storage.dart';
+import 'auth_interceptor.dart';
 
 class DioClient {
   late final Dio _dio;
   final SecureStorage _storage;
+  final GlobalKey<NavigatorState>? navigatorKey;
 
-  DioClient(this._storage) {
+  DioClient(this._storage, {this.navigatorKey}) {
     _dio = Dio(
       BaseOptions(
         baseUrl: AppConstants.baseUrl,
@@ -19,6 +23,7 @@ class DioClient {
       ),
     );
 
+    // Add auth token interceptor
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
@@ -28,11 +33,13 @@ class DioClient {
           }
           return handler.next(options);
         },
-        onError: (error, handler) {
-          return handler.next(error);
-        },
       ),
     );
+
+    // Add 401 error handling interceptor
+    if (navigatorKey != null) {
+      _dio.interceptors.add(AuthInterceptor(_storage, navigatorKey!));
+    }
   }
 
   Dio get dio => _dio;
