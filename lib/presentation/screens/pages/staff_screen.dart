@@ -40,15 +40,15 @@ class _StaffScreenState extends State<StaffScreen> {
         ),
       ),
       bottomNavigationBar: KioskBottomBar(
-        total: 'Total: \$215.00',
+        total: 'Total: ${session.formattedTotal}',
         subtitle: '${session.selectedServices.length} Service Selected',
         primaryLabel: 'Continue',
         primaryEnabled: session.selectedStaff != null,
         onPrimary: () {
           if (session.mode == BookingMode.checkIn) {
-            context.go(AppRoutes.review);
+            context.push(AppRoutes.review);
           } else {
-            context.go(AppRoutes.date);
+            context.push(AppRoutes.date);
           }
         },
       ),
@@ -85,6 +85,8 @@ class _StaffScreenState extends State<StaffScreen> {
                       name: staff.fullName,
                       role: staff.role,
                       index: index,
+                      color: staff.color,
+                      imageUrl: staff.imageUrl,
                       isSelected: staff == session.selectedStaff,
                       onTap: () => context.read<SessionBloc>().setStaff(staff),
                     );

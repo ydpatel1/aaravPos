@@ -51,7 +51,7 @@ class _SlotScreenState extends State<SlotScreen> {
             : '${selectedSlot.startTime} selected',
         primaryLabel: 'Continue',
         primaryEnabled: selectedSlot != null,
-        onPrimary: () => context.go(AppRoutes.review),
+        onPrimary: () => context.push(AppRoutes.review),
       ),
       body: Padding(
         padding: EdgeInsets.all(context.isMobile ? 16 : 20),

@@ -54,7 +54,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
         onSecondary: () => context.pop(),
         primaryLabel: 'Continue',
         primaryEnabled: session.selectedCustomer != null,
-        onPrimary: () => context.go(AppRoutes.consent),
+        onPrimary: () => context.push(AppRoutes.consent),
       ),
       body: Padding(
         padding: EdgeInsets.all(isMobile ? 16 : 20),

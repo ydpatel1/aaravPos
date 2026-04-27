@@ -160,7 +160,7 @@ class _ModeCard extends StatelessWidget {
                 } else {
                   context.read<SessionBloc>().setMode(BookingMode.checkIn);
                 }
-                context.go(AppRoutes.services);
+                context.push(AppRoutes.services);
               }
             : null,
         borderRadius: BorderRadius.circular(24),

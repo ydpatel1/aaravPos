@@ -51,11 +51,11 @@ class _ServicesScreenState extends State<ServicesScreen> {
         ),
       ),
       bottomNavigationBar: KioskBottomBar(
-        total: 'Total: \$215.00',
+        total: 'Total: ${session.formattedTotal}',
         subtitle: '${session.selectedServices.length} Services Selected',
         primaryLabel: 'Continue',
         primaryEnabled: session.selectedServices.isNotEmpty,
-        onPrimary: () => context.go(AppRoutes.staff),
+        onPrimary: () => context.push(AppRoutes.staff),
       ),
       body: BlocBuilder<ServiceBloc, ServiceState>(
         builder: (context, state) {

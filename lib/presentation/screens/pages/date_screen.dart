@@ -40,7 +40,7 @@ class _DateScreenState extends State<DateScreen> {
         onPrimary: () {
           if (_selectedDay != null) {
             context.read<SessionBloc>().setDate(_selectedDay!);
-            context.go(AppRoutes.slots);
+            context.push(AppRoutes.slots);
           }
         },
       ),

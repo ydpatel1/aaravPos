@@ -174,6 +174,8 @@ class BookingRemoteDataSource {
               firstName: staffDetails['firstName'] as String? ?? '',
               lastName: staffDetails['lastName'] as String? ?? '',
               role: staffDetails['staff_type'] as String? ?? '',
+              color: staffDetails['color'] as String?,
+              image: staffDetails['image'] as String?,
             ),
           );
         } catch (e) {
@@ -192,22 +194,29 @@ class BookingRemoteDataSource {
     }
   }
 
-
-
   /// GET staff/slots/$staffId?date=$dateStr
   Future<List<SlotItem>> fetchSlots({
     required String staffId,
     required DateTime date,
   }) async {
     try {
-      final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-      final response = await _apiService.get('staff/slots/$staffId', queryParameters: <String, dynamic>{'date': dateStr});
+      final dateStr =
+          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      final response = await _apiService.get(
+        'staff/slots/$staffId',
+        queryParameters: <String, dynamic>{'date': dateStr},
+      );
       final body = response.data;
-      if (body is! List) throw Exception('Invalid response format: expected List');
+      if (body is! List)
+        throw Exception('Invalid response format: expected List');
       final items = <SlotItem>[];
       for (final slot in body) {
         if (slot is! Map<String, dynamic>) continue;
-        try { items.add(SlotItem.fromJson(slot)); } catch (e) { continue; }
+        try {
+          items.add(SlotItem.fromJson(slot));
+        } catch (e) {
+          continue;
+        }
       }
       return items;
     } catch (e) {

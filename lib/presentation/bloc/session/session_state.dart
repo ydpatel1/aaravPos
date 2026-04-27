@@ -55,6 +55,16 @@ class SessionState extends Equatable {
     );
   }
 
+  /// Calculate total price from selected services
+  double get totalPrice {
+    return selectedServices.fold(0.0, (sum, service) => sum + service.price);
+  }
+
+  /// Formatted total price string
+  String get formattedTotal {
+    return '\$${totalPrice.toStringAsFixed(2)}';
+  }
+
   @override
   List<Object?> get props => [
     mode,
