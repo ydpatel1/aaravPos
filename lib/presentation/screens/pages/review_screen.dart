@@ -1,16 +1,18 @@
+import 'package:aaravpos/core/utils/extensions/space_extension.dart';
+import 'package:aaravpos/domain/model/customer.dart';
 import 'package:aaravpos/presentation/bloc/customer/customer_bloc.dart';
 import 'package:aaravpos/presentation/bloc/session/session_bloc.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:country_picker/country_picker.dart';
 
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/utils/extensions/context_extension.dart';
 import '../../../../shared/widgets/common_app_bar.dart';
 import '../../../../shared/widgets/kiosk_bottom_bar.dart';
 import '../../../../shared/widgets/platform_glass_card.dart';
-
-import '../widgets/customer_dropdown.dart';
 
 class ReviewScreen extends StatefulWidget {
   const ReviewScreen({super.key});
@@ -20,24 +22,111 @@ class ReviewScreen extends StatefulWidget {
 }
 
 class _ReviewScreenState extends State<ReviewScreen> {
-  final _phoneController = TextEditingController(text: '1234567890');
-  final _firstName = TextEditingController();
-  final _lastName = TextEditingController();
-  final _email = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  final _emailController = TextEditingController();
 
-  @override
-  void initState() {
-    super.initState();
-    context.read<CustomerBloc>().search('');
-  }
+  Customer? _selectedCustomer;
+  bool _showSuggestions = false;
+  Country _selectedCountry = Country(
+    phoneCode: '1',
+    countryCode: 'US',
+    e164Sc: 0,
+    geographic: true,
+    level: 1,
+    name: 'United States',
+    example: '2012345678',
+    displayName: 'United States (US) [+1]',
+    displayNameNoCountryCode: 'United States (US)',
+    e164Key: '',
+  );
 
   @override
   void dispose() {
     _phoneController.dispose();
-    _firstName.dispose();
-    _lastName.dispose();
-    _email.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _emailController.dispose();
     super.dispose();
+  }
+
+  void _onCustomerSelected(Customer customer) {
+    setState(() {
+      _selectedCustomer = customer;
+      _showSuggestions = false;
+      _firstNameController.text = customer.firstName;
+      _lastNameController.text = customer.lastName;
+      _emailController.text = customer.email ?? '';
+
+      // Extract phone number without country code
+      String phone = customer.phone;
+      if (phone.startsWith('+')) {
+        // Remove + and country code
+        phone = phone.substring(1);
+        // Try to match country code
+        for (var i = 1; i <= 4; i++) {
+          if (phone.length > i) {
+            final code = phone.substring(0, i);
+            // Check if this matches selected country
+            if (code == _selectedCountry.phoneCode) {
+              phone = phone.substring(i);
+              break;
+            }
+          }
+        }
+      }
+      _phoneController.text = phone;
+    });
+    context.read<SessionBloc>().setCustomer(customer.id);
+  }
+
+  void _onPhoneChanged(String value) {
+    setState(() {
+      _showSuggestions = value.length >= 3;
+    });
+
+    // Trigger search with debouncing (only phone number without country code)
+    if (value.length >= 3) {
+      context.read<CustomerBloc>().search(value);
+    }
+  }
+
+  void _showCountryPicker() {
+    showCountryPicker(
+      context: context,
+      showPhoneCode: true,
+      countryListTheme: CountryListThemeData(
+        borderRadius: BorderRadius.circular(16),
+        backgroundColor: Colors.white,
+        textStyle: const TextStyle(fontSize: 16),
+        searchTextStyle: const TextStyle(fontSize: 16),
+        inputDecoration: InputDecoration(
+          hintText: 'Search country',
+          hintStyle: const TextStyle(color: Color(0xFFB0B0B0)),
+          prefixIcon: const Icon(Icons.search),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFFD7D7DA)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFFD7D7DA)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFFE12242), width: 2),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+        ),
+      ),
+      onSelect: (Country country) {
+        setState(() {
+          _selectedCountry = country;
+        });
+      },
+    );
   }
 
   @override
@@ -46,14 +135,23 @@ class _ReviewScreenState extends State<ReviewScreen> {
     final isMobile = context.isMobile;
 
     return Scaffold(
-      appBar: const CommonAppBar(title: 'Review & Confirm'),
+      appBar: CommonAppBar(
+        title: 'Review & Confirm',
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.pop(),
+        ),
+      ),
       bottomNavigationBar: KioskBottomBar(
         total: 'Total: ${session.formattedTotal}',
         subtitle: '${session.selectedServices.length} Service Selected',
         secondaryLabel: 'Cancel',
         onSecondary: () => context.pop(),
         primaryLabel: 'Continue',
-        primaryEnabled: session.selectedCustomer != null,
+        primaryEnabled:
+            _selectedCustomer != null ||
+            (_firstNameController.text.isNotEmpty &&
+                _phoneController.text.isNotEmpty),
         onPrimary: () => context.push(AppRoutes.consent),
       ),
       body: Padding(
@@ -66,9 +164,14 @@ class _ReviewScreenState extends State<ReviewScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const Text(
+                    'Booking Summary',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
+                  ),
+                  16.vs,
                   ...session.selectedServices.map(
                     (service) => Padding(
-                      padding: const EdgeInsets.only(bottom: 20),
+                      padding: const EdgeInsets.only(bottom: 16),
                       child: Row(
                         children: [
                           Expanded(
@@ -78,13 +181,13 @@ class _ReviewScreenState extends State<ReviewScreen> {
                                 Text(
                                   service.name,
                                   style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
                                   ),
                                 ),
                                 if (service.consentRequired)
                                   Container(
-                                    margin: const EdgeInsets.only(top: 6),
+                                    margin: const EdgeInsets.only(top: 4),
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 8,
                                       vertical: 3,
@@ -104,11 +207,12 @@ class _ReviewScreenState extends State<ReviewScreen> {
                                       ),
                                     ),
                                   ),
-                                const SizedBox(height: 6),
+                                4.vs,
                                 Text(
                                   '${service.durationMin} Minutes',
                                   style: const TextStyle(
                                     color: Color(0xFF737373),
+                                    fontSize: 14,
                                   ),
                                 ),
                               ],
@@ -117,8 +221,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
                           Text(
                             '\$${service.price.toStringAsFixed(2)}',
                             style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 18,
                             ),
                           ),
                         ],
@@ -126,7 +230,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                     ),
                   ),
                   const Divider(),
-                  const SizedBox(height: 12),
+                  12.vs,
                   Row(
                     children: [
                       const Icon(
@@ -134,7 +238,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                         size: 18,
                         color: Color(0xFF737373),
                       ),
-                      const SizedBox(width: 8),
+                      8.hs,
                       Text(
                         session.selectedDate != null
                             ? '${session.selectedDate!.day.toString().padLeft(2, '0')}-${session.selectedDate!.month.toString().padLeft(2, '0')}-${session.selectedDate!.year}'
@@ -143,7 +247,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  8.vs,
                   Row(
                     children: [
                       const Icon(
@@ -151,7 +255,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                         size: 18,
                         color: Color(0xFF737373),
                       ),
-                      const SizedBox(width: 8),
+                      8.hs,
                       Text(
                         session.selectedSlot?.startTime ?? 'No time selected',
                         style: const TextStyle(fontSize: 16),
@@ -165,82 +269,273 @@ class _ReviewScreenState extends State<ReviewScreen> {
             final rightPanel = PlatformGlassCard(
               radius: 24,
               padding: const EdgeInsets.all(20),
-              child: ListView(
-                shrinkWrap: true,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
-                    'Mobile Number *',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
+                  RichText(
+                    text: const TextSpan(
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 18,
+                        color: Colors.black,
+                      ),
+                      children: [
+                        TextSpan(text: 'Mobile Number '),
+                        TextSpan(
+                          text: '*',
+                          style: TextStyle(color: Color(0xFFE12242)),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 8),
+                  12.vs,
                   Row(
                     children: [
-                      Container(
-                        width: 88,
-                        height: 50,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF4F4F6),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFD7D7DA)),
+                      // Country Code Picker Section
+                      InkWell(
+                        onTap: _showCountryPicker,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 08,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFD7D7DA)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _selectedCountry.flagEmoji,
+                                style: const TextStyle(fontSize: 24),
+                              ),
+                              8.hs,
+                              Text(
+                                '+${_selectedCountry.phoneCode}',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF737373),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        child: const Text('+1'),
                       ),
-                      const SizedBox(width: 8),
+                      12.hs,
+                      // Phone Number Input Section
                       Expanded(
                         child: TextField(
                           controller: _phoneController,
-                          decoration: const InputDecoration(
-                            prefixIcon: Icon(Icons.phone_outlined),
-                            hintText: '1234567890',
+                          keyboardType: TextInputType.phone,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                          decoration: InputDecoration(
+                            hintText: '93275167',
+                            hintStyle: const TextStyle(
+                              color: Color(0xFFB0B0B0),
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.phone_outlined,
+                              color: Color(0xFF737373),
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFD7D7DA),
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFD7D7DA),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFE12242),
+                                width: 2,
+                              ),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
                           ),
-                          onChanged: context.read<CustomerBloc>().search,
+                          onChanged: _onPhoneChanged,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  CustomerDropdown(
-                    customers: customerState.results,
-                    value: session.selectedCustomer,
-                    onChanged: (value) {
-                      if (value != null) {
-                        context.read<SessionBloc>().setCustomer(value);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _firstName,
-                    decoration: const InputDecoration(
-                      labelText: 'First Name *',
+
+                  // Customer suggestions as cards below phone field
+                  if (_showSuggestions && customerState.results.isNotEmpty)
+                    ...customerState.results.map(
+                      (customer) => Container(
+                        margin: EdgeInsets.only(top: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE0E0E0)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ListTile(
+                          title: Text(
+                            customer.fullName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                          subtitle: Text(
+                            'Phone: ${customer.phone}',
+                            style: const TextStyle(
+                              color: Color(0xFF737373),
+                              fontSize: 14,
+                            ),
+                          ),
+                          onTap: () => _onCustomerSelected(customer),
+                        ),
+                      ),
+                    ),
+
+                  16.vs,
+                  RichText(
+                    text: const TextSpan(
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        color: Colors.black,
+                      ),
+                      children: [
+                        TextSpan(text: 'First Name '),
+                        TextSpan(
+                          text: '*',
+                          style: TextStyle(color: Color(0xFFE12242)),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  8.vs,
                   TextField(
-                    controller: _lastName,
-                    decoration: const InputDecoration(labelText: 'Last Name'),
+                    controller: _firstNameController,
+                    decoration: InputDecoration(
+                      hintText: 'Enter Your First Name Here',
+                      hintStyle: const TextStyle(color: Color(0xFFB0B0B0)),
+                      prefixIcon: const Icon(
+                        Icons.person_outline,
+                        color: Color(0xFF737373),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFD7D7DA)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: Color(0xFFE12242),
+                          width: 2,
+                        ),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
                   ),
-                  const SizedBox(height: 8),
+                  16.vs,
+                  const Text(
+                    'Last Name',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  ),
+                  8.vs,
                   TextField(
-                    controller: _email,
-                    decoration: const InputDecoration(labelText: 'Email'),
+                    controller: _lastNameController,
+                    decoration: InputDecoration(
+                      hintText: 'Enter Your Last Name Here',
+                      hintStyle: const TextStyle(color: Color(0xFFB0B0B0)),
+                      prefixIcon: const Icon(
+                        Icons.person_outline,
+                        color: Color(0xFF737373),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFD7D7DA)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: Color(0xFFE12242),
+                          width: 2,
+                        ),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                  ),
+                  16.vs,
+                  const Text(
+                    'Email',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  ),
+                  8.vs,
+                  TextField(
+                    controller: _emailController,
+                    decoration: InputDecoration(
+                      hintText: 'Enter Your Email Here',
+                      hintStyle: const TextStyle(color: Color(0xFFB0B0B0)),
+                      prefixIcon: const Icon(
+                        Icons.email_outlined,
+                        color: Color(0xFF737373),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFD7D7DA)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: Color(0xFFE12242),
+                          width: 2,
+                        ),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
                   ),
                 ],
               ),
             );
 
             if (isMobile) {
-              return ListView(
-                children: [leftPanel, const SizedBox(height: 12), rightPanel],
+              return SingleChildScrollView(
+                child: Column(children: [leftPanel, 12.vs, rightPanel]),
               );
             }
 
             return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(child: leftPanel),
-                const SizedBox(width: 16),
-                Expanded(child: rightPanel),
+                Expanded(child: SingleChildScrollView(child: leftPanel)),
+                16.hs,
+                Expanded(child: SingleChildScrollView(child: rightPanel)),
               ],
             );
           },

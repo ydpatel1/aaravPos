@@ -3,17 +3,17 @@ part of 'customer_bloc.dart';
 class CustomerState extends Equatable {
   const CustomerState({
     this.isLoading = false,
-    this.results = const <String>[],
+    this.results = const <Customer>[],
     this.errorMessage,
   });
 
   final bool isLoading;
-  final List<String> results;
+  final List<Customer> results;
   final String? errorMessage;
 
   CustomerState copyWith({
     bool? isLoading,
-    List<String>? results,
+    List<Customer>? results,
     String? errorMessage,
   }) {
     return CustomerState(

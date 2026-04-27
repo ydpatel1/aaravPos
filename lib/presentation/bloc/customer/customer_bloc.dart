@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:aaravpos/domain/model/customer.dart';
 import 'package:aaravpos/domain/repo/booking_repository.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -51,4 +52,3 @@ class CustomerBloc extends Bloc<CustomerEvent, CustomerState> {
     return super.close();
   }
 }
-

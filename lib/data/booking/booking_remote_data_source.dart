@@ -1,4 +1,5 @@
 import '../../core/network/api_service.dart';
+import '../../domain/model/customer.dart';
 import '../../domain/model/service_item.dart';
 import '../../domain/model/slot_item.dart';
 import '../../domain/model/staff_member.dart';
@@ -254,6 +255,56 @@ class BookingRemoteDataSource {
       return items;
     } catch (e) {
       throw Exception('Failed to fetch slots: ${e.toString()}');
+    }
+  }
+
+  /// GET customer/list/$tenantId?page=1&limit=20&search=$encodedPhone
+  ///
+  /// Search customers by phone number (without country code)
+  /// Response: { "success": true, "data": { "data": [ { "id": "...", "first_name": "...", "last_name": "...", "phone": "...", "email": "..." } ] } }
+  Future<List<Customer>> searchCustomers({
+    required String tenantId,
+    required String phoneNumber,
+  }) async {
+    try {
+      final response = await _apiService.get(
+        'customer/list/$tenantId',
+        queryParameters: <String, dynamic>{
+          'page': 1,
+          'limit': 20,
+          'search': Uri.encodeComponent(phoneNumber),
+        },
+      );
+
+      final body = response.data;
+      if (body is! Map<String, dynamic>) {
+        throw Exception('Invalid response format: expected Map');
+      }
+
+      // API returns nested structure: { data: { data: [...] } }
+      final outerData = body['data'];
+      if (outerData is! Map<String, dynamic>) {
+        return []; // No data
+      }
+
+      final innerData = outerData['data'];
+      if (innerData is! List) {
+        return []; // No customers found
+      }
+
+      final customers = <Customer>[];
+      for (final customer in innerData) {
+        if (customer is! Map<String, dynamic>) continue;
+        try {
+          customers.add(Customer.fromJson(customer));
+        } catch (e) {
+          continue;
+        }
+      }
+
+      return customers;
+    } catch (e) {
+      throw Exception('Failed to search customers: ${e.toString()}');
     }
   }
 }

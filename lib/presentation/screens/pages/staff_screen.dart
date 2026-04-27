@@ -55,8 +55,8 @@ class _StaffScreenState extends State<StaffScreen> {
         SlotsFetched(staffId: staffId, selectedDate: now),
       );
 
-      // Wait for slots to load with a listener
-      await Future.delayed(const Duration(milliseconds: 1500));
+      // Wait for slots to load
+      await Future.delayed(const Duration(milliseconds: 2000));
 
       if (mounted) {
         // Close loading dialog
@@ -64,21 +64,23 @@ class _StaffScreenState extends State<StaffScreen> {
 
         final slotState = context.read<SlotBloc>().state;
 
-        debugPrint('🔍 Slots loaded: ${slotState.items.length} total slots');
+        debugPrint(
+          '🔍 Check-In Mode: Slots loaded: ${slotState.items.length} total slots',
+        );
 
         if (slotState.items.isNotEmpty) {
           // Find nearest available future slot
           final currentTime = DateTime.now();
 
           debugPrint(
-            '🕐 Current time: ${currentTime.hour}:${currentTime.minute}',
+            '🕐 Current time: ${currentTime.hour}:${currentTime.minute.toString().padLeft(2, '0')}',
           );
 
           // Filter available slots that are in the future
           final futureSlots = slotState.items.where((slot) {
             if (!slot.available) {
               debugPrint(
-                '❌ Slot ${slot.startTime} not available (booked: ${slot.isBooked})',
+                '❌ Slot ${slot.startTime} not available (status: ${slot.available}, booked: ${slot.isBooked})',
               );
               return false;
             }
@@ -91,7 +93,7 @@ class _StaffScreenState extends State<StaffScreen> {
 
             final isFuture = slotDateTime.isAfter(currentTime);
             debugPrint(
-              '${isFuture ? "✅" : "❌"} Slot ${slot.startTime} - ${isFuture ? "future" : "past"}',
+              '${isFuture ? "✅" : "❌"} Slot ${slot.startTime} - ${isFuture ? "future" : "past"} (slot: ${slotDateTime.hour}:${slotDateTime.minute.toString().padLeft(2, '0')})',
             );
 
             return isFuture;
@@ -110,17 +112,51 @@ class _StaffScreenState extends State<StaffScreen> {
 
             // Auto-select the nearest future slot
             final selectedSlot = futureSlots.first;
-            debugPrint('✅ Auto-selected slot: ${selectedSlot.startTime}');
+            debugPrint(
+              '✅ Auto-selected slot: ${selectedSlot.startTime} (ID: ${selectedSlot.id})',
+            );
+
+            // Set the slot in session
             context.read<SessionBloc>().setSlot(selectedSlot);
+
+            // Wait a bit for state to update
+            await Future.delayed(const Duration(milliseconds: 300));
+
+            // Verify slot was set
+            final updatedSession = context.read<SessionBloc>().state;
+            debugPrint(
+              '🔍 Slot in session after setting: ${updatedSession.selectedSlot?.startTime ?? "NULL"}',
+            );
           } else {
             debugPrint('⚠️ No future slots available');
+            // Show error message
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('No available time slots for today'),
+                  backgroundColor: Color(0xFFE12242),
+                ),
+              );
+              return;
+            }
           }
         } else {
           debugPrint('⚠️ No slots returned from API');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('No time slots available'),
+                backgroundColor: Color(0xFFE12242),
+              ),
+            );
+            return;
+          }
         }
 
         // Navigate directly to review
-        context.push(AppRoutes.review);
+        if (mounted) {
+          context.push(AppRoutes.review);
+        }
       }
     } else {
       // Appointment mode: Go to date selection

@@ -1,4 +1,5 @@
 import 'package:aaravpos/core/storage/secure_storage.dart';
+import 'package:aaravpos/domain/model/customer.dart';
 import 'package:aaravpos/domain/repo/booking_repository.dart';
 import 'package:aaravpos/domain/model/service_item.dart';
 import 'package:aaravpos/domain/model/slot_item.dart';
@@ -42,18 +43,15 @@ class BookingRepositoryImpl implements BookingRepository {
   }
 
   @override
-  Future<List<String>> searchCustomers(String query) async {
-    await Future<void>.delayed(const Duration(milliseconds: 300));
-    const names = [
-      'shivani patel',
-      'rohan sharma',
-      'priya jain',
-      'aditi patel',
-    ];
-    if (query.isEmpty) return names;
-    return names
-        .where((n) => n.toLowerCase().contains(query.toLowerCase()))
-        .toList();
+  Future<List<Customer>> searchCustomers(String phoneNumber) async {
+    final tenantId = await _secureStorage.getTenantId();
+    if (tenantId == null || tenantId.isEmpty) {
+      throw Exception('Tenant ID not found. Please log in again.');
+    }
+    return _remoteDataSource.searchCustomers(
+      tenantId: tenantId,
+      phoneNumber: phoneNumber,
+    );
   }
 
   @override
