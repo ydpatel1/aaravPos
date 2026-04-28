@@ -1,43 +1,93 @@
 import 'package:aaravpos/presentation/bloc/booking/booking_bloc.dart';
+import 'package:aaravpos/presentation/bloc/consent/consent_bloc.dart';
 import 'package:aaravpos/presentation/bloc/session/session_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/app_routes.dart';
-import '../../../../shared/widgets/common_app_bar.dart';
+import '../../../../core/utils/extensions/context_extension.dart';
+import '../../../../core/utils/extensions/space_extension.dart';
 import '../../../../shared/widgets/platform_glass_card.dart';
 
 class DetailsScreen extends StatelessWidget {
   const DetailsScreen({super.key});
 
+  void _goHome(BuildContext context) {
+    context.read<SessionBloc>().reset();
+    context.read<ConsentBloc>().add(const ConsentReset());
+    context.go(AppRoutes.home);
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = context.watch<SessionBloc>().state;
     final bookingId = context.watch<BookingBloc>().state.bookingId ?? 'N/A';
+    final isMobile = context.isMobile;
 
     return Scaffold(
-      appBar: const CommonAppBar(title: 'Appointment Confirmed'),
+      appBar: AppBar(
+        title: const Text(
+          'Appointment Details',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => _goHome(context),
+        ),
+      ),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(isMobile ? 16 : 24),
         child: PlatformGlassCard(
           radius: 20,
           border: Border.all(color: const Color(0xFFE12242), width: 1.4),
           padding: const EdgeInsets.all(20),
           child: ListView(
             children: [
-              Text('Booking: $bookingId'),
-              const SizedBox(height: 8),
-              Text('Customer: ${session.selectedCustomer ?? '-'}'),
-              const Divider(height: 30),
-              const Text(
-                'Service Selected',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
+              // Booking ID & customer
+              Row(
+                children: [
+                  const Icon(
+                    Icons.confirmation_number_outlined,
+                    color: Color(0xFFE12242),
+                    size: 20,
+                  ),
+                  8.hs,
+                  Text(
+                    'Booking ID: $bookingId',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
+              8.vs,
+              Row(
+                children: [
+                  const Icon(
+                    Icons.person_outline,
+                    color: Color(0xFF737373),
+                    size: 20,
+                  ),
+                  8.hs,
+                  Text(
+                    session.selectedCustomer ?? '-',
+                    style: const TextStyle(fontSize: 15),
+                  ),
+                ],
+              ),
+              const Divider(height: 32),
+
+              // Services
+              const Text(
+                'Services',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+              ),
+              16.vs,
               ...session.selectedServices.map(
                 (service) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.only(bottom: 14),
                   child: Row(
                     children: [
                       Expanded(
@@ -46,45 +96,55 @@ class DetailsScreen extends StatelessWidget {
                           children: [
                             Text(
                               service.name,
-                              style: const TextStyle(fontSize: 18),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
                             ),
                             Text(
                               '${service.durationMin} min',
-                              style: const TextStyle(color: Color(0xFF737373)),
+                              style: const TextStyle(
+                                color: Color(0xFF737373),
+                                fontSize: 13,
+                              ),
                             ),
                           ],
                         ),
                       ),
                       Text(
-                        '\$${service.price.toStringAsFixed(2)}',
+                        service.displayPrice,
                         style: const TextStyle(
                           fontWeight: FontWeight.w700,
-                          fontSize: 20,
+                          fontSize: 16,
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-              const Divider(height: 30),
-              const Row(
+              const Divider(height: 28),
+
+              // Subtotal
+              Row(
                 children: [
-                  Expanded(
-                    child: Text('Subtotal', style: TextStyle(fontSize: 24)),
+                  const Expanded(
+                    child: Text(
+                      'Subtotal',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                   Text(
-                    '\$215.00',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+                    session.formattedTotal,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFFE12242),
+                    ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () {
-                  context.read<SessionBloc>().reset();
-                  context.go(AppRoutes.home);
-                },
-                child: const Text('Back to Home'),
               ),
             ],
           ),

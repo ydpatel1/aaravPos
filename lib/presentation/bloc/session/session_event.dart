@@ -53,12 +53,13 @@ class SessionSlotChanged extends SessionEvent {
 }
 
 class SessionCustomerChanged extends SessionEvent {
-  const SessionCustomerChanged(this.customer);
+  const SessionCustomerChanged(this.customer, {this.customerId});
 
   final String customer;
+  final String? customerId;
 
   @override
-  List<Object?> get props => [customer];
+  List<Object?> get props => [customer, customerId];
 }
 
 class SessionResetRequested extends SessionEvent {

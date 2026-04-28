@@ -1,28 +1,58 @@
 part of 'consent_bloc.dart';
 
+enum ConsentStatus {
+  initial,
+  checking, // calling GET consent/check
+  skipped, // no consent needed → go straight to booking
+  needsSign, // show dialog
+  signing, // calling POST consent/customer-sign
+  signed, // success → proceed to booking
+  error,
+}
+
 class ConsentState extends Equatable {
   const ConsentState({
-    this.isLoading = false,
-    this.isConsentRequired = true,
+    this.status = ConsentStatus.initial,
+    this.consentText = '',
+    this.consentFormId = '',
+    this.signatureType = 'SIGNATURE_IMAGE',
+    this.pendingServiceIds = const [],
     this.errorMessage,
   });
 
-  final bool isLoading;
-  final bool isConsentRequired;
+  final ConsentStatus status;
+  final String consentText;
+  final String consentFormId;
+  final String
+  signatureType; // "SIGNATURE_IMAGE" | "CHECKBOX_ONLY" | "TYPED_NAME"
+  final List<String> pendingServiceIds;
   final String? errorMessage;
 
   ConsentState copyWith({
-    bool? isLoading,
-    bool? isConsentRequired,
+    ConsentStatus? status,
+    String? consentText,
+    String? consentFormId,
+    String? signatureType,
+    List<String>? pendingServiceIds,
     String? errorMessage,
   }) {
     return ConsentState(
-      isLoading: isLoading ?? this.isLoading,
-      isConsentRequired: isConsentRequired ?? this.isConsentRequired,
+      status: status ?? this.status,
+      consentText: consentText ?? this.consentText,
+      consentFormId: consentFormId ?? this.consentFormId,
+      signatureType: signatureType ?? this.signatureType,
+      pendingServiceIds: pendingServiceIds ?? this.pendingServiceIds,
       errorMessage: errorMessage,
     );
   }
 
   @override
-  List<Object?> get props => [isLoading, isConsentRequired, errorMessage];
+  List<Object?> get props => [
+    status,
+    consentText,
+    consentFormId,
+    signatureType,
+    pendingServiceIds,
+    errorMessage,
+  ];
 }

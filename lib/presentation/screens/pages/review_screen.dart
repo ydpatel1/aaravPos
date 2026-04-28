@@ -1,5 +1,6 @@
 import 'package:aaravpos/core/utils/extensions/space_extension.dart';
 import 'package:aaravpos/domain/model/customer.dart';
+import 'package:aaravpos/presentation/bloc/consent/consent_bloc.dart';
 import 'package:aaravpos/presentation/bloc/customer/customer_bloc.dart';
 import 'package:aaravpos/presentation/bloc/session/session_bloc.dart';
 import 'package:flutter/material.dart';
@@ -78,7 +79,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
       }
       _phoneController.text = phone;
     });
-    context.read<SessionBloc>().setCustomer(customer.id);
+    context.read<SessionBloc>().setCustomer(
+      customer.fullName,
+      customerId: customer.id,
+    );
   }
 
   void _onPhoneChanged(String value) {
@@ -142,17 +146,35 @@ class _ReviewScreenState extends State<ReviewScreen> {
           onPressed: () => context.pop(),
         ),
       ),
-      bottomNavigationBar: KioskBottomBar(
-        total: 'Total: ${session.formattedTotal}',
-        subtitle: '${session.selectedServices.length} Service Selected',
-        secondaryLabel: 'Cancel',
-        onSecondary: () => context.pop(),
-        primaryLabel: 'Continue',
-        primaryEnabled:
-            _selectedCustomer != null ||
-            (_firstNameController.text.isNotEmpty &&
-                _phoneController.text.isNotEmpty),
-        onPrimary: () => context.push(AppRoutes.consent),
+      bottomNavigationBar: BlocListener<ConsentBloc, ConsentState>(
+        listener: (context, consentState) {
+          if (consentState.status == ConsentStatus.skipped) {
+            // No consent needed → go straight to booking
+            context.push(AppRoutes.consent);
+          } else if (consentState.status == ConsentStatus.needsSign) {
+            context.push(AppRoutes.consent);
+          }
+        },
+        child: KioskBottomBar(
+          total: 'Total: ${session.formattedTotal}',
+          subtitle: '${session.selectedServices.length} Service Selected',
+          secondaryLabel: 'Cancel',
+          onSecondary: () => context.pop(),
+          primaryLabel: 'Continue',
+          primaryEnabled:
+              _selectedCustomer != null ||
+              (_firstNameController.text.isNotEmpty &&
+                  _phoneController.text.isNotEmpty),
+          onPrimary: () {
+            final customerId = session.selectedCustomerId ?? '';
+            context.read<ConsentBloc>().add(
+              ConsentCheckRequested(
+                customerId: customerId,
+                services: session.selectedServices,
+              ),
+            );
+          },
+        ),
       ),
       body: Padding(
         padding: EdgeInsets.all(isMobile ? 16 : 20),

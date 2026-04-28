@@ -1,4 +1,5 @@
 import 'package:aaravpos/core/storage/secure_storage.dart';
+import 'package:aaravpos/domain/model/consent_check_result.dart';
 import 'package:aaravpos/domain/model/customer.dart';
 import 'package:aaravpos/domain/repo/booking_repository.dart';
 import 'package:aaravpos/domain/model/service_item.dart';
@@ -20,12 +21,6 @@ class BookingRepositoryImpl implements BookingRepository {
       throw Exception('Tenant ID not found. Please log in again.');
     }
     return _remoteDataSource.fetchServices(tenantId: tenantId);
-  }
-
-  @override
-  Future<bool> checkConsent(String customerName) async {
-    await Future<void>.delayed(const Duration(milliseconds: 300));
-    return customerName.isNotEmpty;
   }
 
   @override
@@ -51,6 +46,45 @@ class BookingRepositoryImpl implements BookingRepository {
     return _remoteDataSource.searchCustomers(
       tenantId: tenantId,
       phoneNumber: phoneNumber,
+    );
+  }
+
+  @override
+  Future<ConsentCheckResult> checkConsentStatus({
+    required String customerId,
+    required String consentFormId,
+    required String serviceId,
+  }) async {
+    final raw = await _remoteDataSource.checkConsentStatus(
+      customerId: customerId,
+      consentFormId: consentFormId,
+      serviceId: serviceId,
+    );
+    return ConsentCheckResult.fromJson(raw);
+  }
+
+  @override
+  Future<void> signConsent({
+    required String customerId,
+    required String consentFormId,
+    required List<String> serviceIds,
+    required String staffId,
+    required String outletId,
+    required String tenantId,
+    required String signatureType,
+    String? imageUrl,
+    String? typedName,
+  }) async {
+    return _remoteDataSource.signConsent(
+      customerId: customerId,
+      consentFormId: consentFormId,
+      serviceIds: serviceIds,
+      staffId: staffId,
+      outletId: outletId,
+      tenantId: tenantId,
+      signatureType: signatureType,
+      imageUrl: imageUrl,
+      typedName: typedName,
     );
   }
 

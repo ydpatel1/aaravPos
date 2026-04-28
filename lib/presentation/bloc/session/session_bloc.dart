@@ -57,7 +57,12 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     SessionCustomerChanged event,
     Emitter<SessionState> emit,
   ) {
-    emit(state.copyWith(selectedCustomer: event.customer));
+    emit(
+      state.copyWith(
+        selectedCustomer: event.customer,
+        selectedCustomerId: event.customerId,
+      ),
+    );
   }
 
   void _onResetRequested(
@@ -82,7 +87,8 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   void setStaff(StaffMember staff) => add(SessionStaffChanged(staff));
   void setDate(DateTime date) => add(SessionDateChanged(date));
   void setSlot(SlotItem slot) => add(SessionSlotChanged(slot));
-  void setCustomer(String customer) => add(SessionCustomerChanged(customer));
+  void setCustomer(String customer, {String? customerId}) =>
+      add(SessionCustomerChanged(customer, customerId: customerId));
   void reset() => add(const SessionResetRequested());
   void setOutletOpen(bool isOpen) =>
       add(SessionOutletStatusLoaded(isOpen: isOpen));

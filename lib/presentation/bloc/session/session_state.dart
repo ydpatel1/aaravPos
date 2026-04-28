@@ -12,6 +12,7 @@ class SessionState extends Equatable {
     this.selectedDate,
     this.selectedSlot,
     this.selectedCustomer,
+    this.selectedCustomerId,
   });
 
   final BookingMode mode;
@@ -25,7 +26,8 @@ class SessionState extends Equatable {
   final StaffMember? selectedStaff;
   final DateTime? selectedDate;
   final SlotItem? selectedSlot;
-  final String? selectedCustomer;
+  final String? selectedCustomer; // display name
+  final String? selectedCustomerId; // actual UUID for API calls
 
   SessionState copyWith({
     BookingMode? mode,
@@ -36,6 +38,7 @@ class SessionState extends Equatable {
     DateTime? selectedDate,
     SlotItem? selectedSlot,
     String? selectedCustomer,
+    String? selectedCustomerId,
     bool clearStaff = false,
     bool clearDate = false,
     bool clearSlot = false,
@@ -52,6 +55,9 @@ class SessionState extends Equatable {
       selectedCustomer: clearCustomer
           ? null
           : selectedCustomer ?? this.selectedCustomer,
+      selectedCustomerId: clearCustomer
+          ? null
+          : selectedCustomerId ?? this.selectedCustomerId,
     );
   }
 
@@ -74,5 +80,6 @@ class SessionState extends Equatable {
     selectedDate,
     selectedSlot,
     selectedCustomer,
+    selectedCustomerId,
   ];
 }

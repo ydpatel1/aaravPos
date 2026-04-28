@@ -1,0 +1,37 @@
+class ConsentCheckResult {
+  const ConsentCheckResult({
+    required this.needsSignature,
+    required this.signingFrequency,
+    required this.consentFormId,
+    required this.consentText,
+    required this.signatureType,
+  });
+
+  final bool needsSignature;
+  final String signingFrequency; // "ONCE_PER_CUSTOMER" | "EVERY_TIME"
+  final String consentFormId;
+  final String consentText;
+  final String signatureType; // "SIGNATURE_IMAGE" | "CHECKBOX_ONLY" | "TYPED_NAME"
+
+  /// True means we must show the consent dialog
+  bool get requiresDialog {
+    if (signingFrequency == 'ONCE_PER_CUSTOMER' && !needsSignature) {
+      return false;
+    }
+    return needsSignature;
+  }
+
+  factory ConsentCheckResult.fromJson(Map<String, dynamic> json) {
+    final data = json['data'] is Map<String, dynamic>
+        ? json['data'] as Map<String, dynamic>
+        : json;
+
+    return ConsentCheckResult(
+      needsSignature: data['needsSignature'] as bool? ?? true,
+      signingFrequency: data['signingFrequency'] as String? ?? 'EVERY_TIME',
+      consentFormId: data['consentFormId'] as String? ?? '',
+      consentText: data['consentText'] as String? ?? '',
+      signatureType: data['signatureType'] as String? ?? 'SIGNATURE_IMAGE',
+    );
+  }
+}

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lottie/lottie.dart';
@@ -5,8 +7,22 @@ import 'package:lottie/lottie.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/utils/extensions/context_extension.dart';
 
-class SuccessScreen extends StatelessWidget {
+class SuccessScreen extends StatefulWidget {
   const SuccessScreen({super.key});
+
+  @override
+  State<SuccessScreen> createState() => _SuccessScreenState();
+}
+
+class _SuccessScreenState extends State<SuccessScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Auto-navigate to Details after 3 seconds
+    Timer(const Duration(seconds: 3), () {
+      if (mounted) context.go(AppRoutes.details);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,17 +31,13 @@ class SuccessScreen extends StatelessWidget {
     return Scaffold(
       body: SafeArea(
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24),
+          padding: EdgeInsets.symmetric(horizontal: isMobile ? 24 : 48),
           child: Column(
             children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: IconButton(onPressed: () => context.pop(), icon: const Icon(Icons.arrow_back)),
-              ),
               const Spacer(),
               SizedBox(
-                width: isMobile ? 180 : 260,
-                height: isMobile ? 180 : 260,
+                width: isMobile ? 200 : 280,
+                height: isMobile ? 200 : 280,
                 child: Lottie.asset(
                   'assets/animations/success.json',
                   errorBuilder: (_, __, ___) => Icon(
@@ -35,24 +47,27 @@ class SuccessScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
               Text(
-                'Your salon appointment is confirmed !!',
+                'Booking Confirmed!',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: isMobile ? 28 : 40),
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: isMobile ? 30 : 42,
+                ),
               ),
               const SizedBox(height: 12),
               Text(
-                'We\'re excited to serve you! Thank you for choosing us. See you soon!',
+                "We're excited to serve you! Thank you for choosing us. See you soon!",
                 textAlign: TextAlign.center,
-                style: TextStyle(color: const Color(0xFF737373), fontSize: isMobile ? 15 : 22),
+                style: TextStyle(
+                  color: const Color(0xFF737373),
+                  fontSize: isMobile ? 15 : 20,
+                  height: 1.5,
+                ),
               ),
               const Spacer(),
-              SizedBox(
-                width: isMobile ? double.infinity : 280,
-                child: ElevatedButton(onPressed: () => context.go(AppRoutes.details), child: const Text('View Details')),
-              ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
             ],
           ),
         ),

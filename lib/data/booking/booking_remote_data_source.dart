@@ -307,4 +307,63 @@ class BookingRemoteDataSource {
       throw Exception('Failed to search customers: ${e.toString()}');
     }
   }
+
+  /// GET consent/check/{customerId}/{consentFormId}?serviceId={serviceId}
+  Future<Map<String, dynamic>> checkConsentStatus({
+    required String customerId,
+    required String consentFormId,
+    required String serviceId,
+  }) async {
+    try {
+      final response = await _apiService.get(
+        'consent/check/$customerId/$consentFormId',
+        queryParameters: <String, dynamic>{'serviceId': serviceId},
+      );
+      final body = response.data;
+      if (body is! Map<String, dynamic>) {
+        throw Exception('Invalid consent check response');
+      }
+      return body;
+    } catch (e) {
+      throw Exception('Failed to check consent: ${e.toString()}');
+    }
+  }
+
+  /// POST consent/customer-sign
+  Future<void> signConsent({
+    required String customerId,
+    required String consentFormId,
+    required List<String> serviceIds,
+    required String staffId,
+    required String outletId,
+    required String tenantId,
+    required String signatureType,
+    String? imageUrl,
+    String? typedName,
+  }) async {
+    try {
+      final payload = <String, dynamic>{
+        'tenantId': tenantId,
+        'customerId': customerId,
+        'serviceIds': serviceIds,
+        'outletId': outletId,
+        'consentFormId': consentFormId,
+        'signatureType': signatureType,
+        'channel': 'POS',
+        'staffId': staffId,
+        if (imageUrl != null) 'imageUrl': imageUrl,
+        if (typedName != null) 'typedName': typedName,
+      };
+      final response = await _apiService.post(
+        'consent/customer-sign',
+        data: payload,
+      );
+      final body = response.data;
+      if (body is Map<String, dynamic> && body['success'] == false) {
+        throw Exception(body['message'] as String? ?? 'Consent sign failed');
+      }
+    } catch (e) {
+      throw Exception('Failed to sign consent: ${e.toString()}');
+    }
+  }
 }
