@@ -54,7 +54,7 @@ class _DateScreenState extends State<DateScreen> {
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -111,7 +111,7 @@ class _DateScreenState extends State<DateScreen> {
               ),
               calendarStyle: CalendarStyle(
                 todayDecoration: BoxDecoration(
-                  color: const Color(0xFFE12242).withOpacity(0.2),
+                  color: const Color(0xFFE12242).withValues(alpha: 0.2),
                   shape: BoxShape.rectangle,
                   borderRadius: BorderRadius.circular(12),
                 ),

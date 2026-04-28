@@ -8,6 +8,7 @@ import 'package:shimmer/shimmer.dart';
 
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/utils/extensions/context_extension.dart';
+import '../../../../core/utils/extensions/space_extension.dart';
 import '../../../../shared/widgets/common_app_bar.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/kiosk_bottom_bar.dart';
@@ -26,15 +27,64 @@ class _SlotScreenState extends State<SlotScreen> {
     final session = context.read<SessionBloc>().state;
     final staffId = session.selectedStaff?.id;
     final date = session.selectedDate;
-
     if (staffId != null && date != null) {
       context.read<SlotBloc>().fetchSlots(staffId, date);
     }
   }
 
+  /// Whether a slot's time is in the past compared to now (only relevant for today)
+  bool _isPast(SlotItem slot, DateTime selectedDate) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final selDay = DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+    );
+    if (selDay != today) return false; // future date — never past
+    final dt = slot.toDateTime(selectedDate);
+    if (dt == null) return false;
+    return dt.isBefore(now);
+  }
+
+  /// Format "HH:mm" → "h:mm AM/PM"
+  String _formatTime(String time) {
+    final parts = time.split(':');
+    if (parts.length < 2) return time;
+    final h = int.tryParse(parts[0]) ?? 0;
+    final m = int.tryParse(parts[1]) ?? 0;
+    final period = h < 12 ? 'AM' : 'PM';
+    final hour = h == 0 ? 12 : (h > 12 ? h - 12 : h);
+    return '$hour:${m.toString().padLeft(2, '0')} $period';
+  }
+
+  /// Build bottom bar subtitle: "11:00 AM – 1:15 PM • 2 Services"
+  String _buildSubtitle(SessionState session) {
+    final slot = session.selectedSlot;
+    final services = session.selectedServices;
+    if (slot == null) return '${services.length} Service Selected';
+
+    final totalMin = services.fold<int>(0, (sum, s) => sum + s.durationMin);
+    final parts = slot.startTime.split(':');
+    if (parts.length < 2) {
+      return '${services.length} Service Selected';
+    }
+    final startH = int.tryParse(parts[0]) ?? 0;
+    final startM = int.tryParse(parts[1]) ?? 0;
+    final endTotal = startH * 60 + startM + totalMin;
+    final endH = endTotal ~/ 60;
+    final endM = endTotal % 60;
+    final endTime =
+        '${endH > 12 ? endH - 12 : (endH == 0 ? 12 : endH)}:${endM.toString().padLeft(2, '0')} ${endH < 12 ? 'AM' : 'PM'}';
+
+    return '${_formatTime(slot.startTime)} – $endTime • ${services.length} Services';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final selectedSlot = context.watch<SessionBloc>().state.selectedSlot;
+    final session = context.watch<SessionBloc>().state;
+    final selectedDate = session.selectedDate ?? DateTime.now();
+    final selectedSlot = session.selectedSlot;
 
     return Scaffold(
       appBar: CommonAppBar(
@@ -45,10 +95,8 @@ class _SlotScreenState extends State<SlotScreen> {
         ),
       ),
       bottomNavigationBar: KioskBottomBar(
-        total: 'Total: \$215.00',
-        subtitle: selectedSlot == null
-            ? 'Select a time slot'
-            : '${selectedSlot.startTime} selected',
+        total: 'Total: ${session.formattedTotal}',
+        subtitle: _buildSubtitle(session),
         primaryLabel: 'Continue',
         primaryEnabled: selectedSlot != null,
         onPrimary: () => context.push(AppRoutes.review),
@@ -76,21 +124,32 @@ class _SlotScreenState extends State<SlotScreen> {
                 ),
               );
             }
+
             if (state.errorMessage != null) {
               return ErrorStateWidget(
                 message: state.errorMessage!,
                 onRetry: () {
-                  final session = context.read<SessionBloc>().state;
-                  final staffId = session.selectedStaff?.id;
-                  final date = session.selectedDate;
-                  if (staffId != null && date != null) {
-                    context.read<SlotBloc>().fetchSlots(staffId, date);
+                  final s = context.read<SessionBloc>().state;
+                  if (s.selectedStaff?.id != null && s.selectedDate != null) {
+                    context.read<SlotBloc>().fetchSlots(
+                      s.selectedStaff!.id,
+                      s.selectedDate!,
+                    );
                   }
                 },
               );
             }
 
-            // Group slots by period (Morning, Afternoon, Evening)
+            if (state.items.isEmpty) {
+              return const Center(
+                child: Text(
+                  'No time slots available',
+                  style: TextStyle(color: Color(0xFF737373), fontSize: 16),
+                ),
+              );
+            }
+
+            // Group ALL slots (including unavailable) into Morning/Afternoon/Evening
             final groups = <String, List<SlotItem>>{
               'Morning': [],
               'Afternoon': [],
@@ -98,34 +157,31 @@ class _SlotScreenState extends State<SlotScreen> {
             };
 
             for (final slot in state.items) {
-              if (!slot.available) continue; // Skip unavailable slots
-
-              final time = slot.startTime;
-              final hour = int.tryParse(time.split(':')[0]) ?? 0;
-
-              if (hour < 12) {
+              final hour = int.tryParse(slot.startTime.split(':')[0]) ?? 0;
+              if (hour >= 6 && hour < 12) {
                 groups['Morning']!.add(slot);
-              } else if (hour < 17) {
+              } else if (hour >= 12 && hour < 17) {
                 groups['Afternoon']!.add(slot);
               } else {
                 groups['Evening']!.add(slot);
               }
             }
 
-            // Remove empty periods
-            groups.removeWhere((key, value) => value.isEmpty);
+            groups.removeWhere((_, v) => v.isEmpty);
 
             return ListView(
               children: groups.entries.map((entry) {
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.only(bottom: 20),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Section header
                       Container(
-                        height: 56,
+                        height: 48,
                         decoration: BoxDecoration(
                           color: const Color(0xFFE12242),
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         alignment: Alignment.centerLeft,
@@ -133,48 +189,31 @@ class _SlotScreenState extends State<SlotScreen> {
                           entry.key,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 18,
+                            fontSize: 16,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      12.vs,
                       Wrap(
                         spacing: 10,
                         runSpacing: 10,
                         children: entry.value.map<Widget>((slot) {
-                          final selected = selectedSlot?.id == slot.id;
-                          return InkWell(
-                            onTap: () =>
-                                context.read<SessionBloc>().setSlot(slot),
-                            child: Container(
-                              width: context.isMobile ? 102 : 120,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: selected
-                                    ? const Color(0x1FE12242)
-                                    : const Color(0xFFF2F2F4),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: selected
-                                      ? const Color(0xFFE12242)
-                                      : const Color(0xFFD5D5D8),
-                                ),
-                              ),
-                              child: Text(
-                                slot.startTime,
-                                style: TextStyle(
-                                  color: selected
-                                      ? const Color(0xFFE12242)
-                                      : const Color(0xFF2B2B2B),
-                                  fontWeight: selected
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
-                                  fontSize: context.isMobile ? 13 : 15,
-                                ),
-                              ),
-                            ),
+                          final isSelected = selectedSlot?.id == slot.id;
+                          final isPast = _isPast(slot, selectedDate);
+                          final isUnavailable = !slot.available;
+                          final isDisabled = isUnavailable || isPast;
+
+                          return _SlotPill(
+                            slot: slot,
+                            isSelected: isSelected,
+                            isUnavailable: isUnavailable,
+                            isPast: isPast,
+                            isMobile: context.isMobile,
+                            onTap: isDisabled
+                                ? null
+                                : () =>
+                                      context.read<SessionBloc>().setSlot(slot),
                           );
                         }).toList(),
                       ),
@@ -184,6 +223,78 @@ class _SlotScreenState extends State<SlotScreen> {
               }).toList(),
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+class _SlotPill extends StatelessWidget {
+  const _SlotPill({
+    required this.slot,
+    required this.isSelected,
+    required this.isUnavailable,
+    required this.isPast,
+    required this.isMobile,
+    required this.onTap,
+  });
+
+  final SlotItem slot;
+  final bool isSelected;
+  final bool isUnavailable;
+  final bool isPast;
+  final bool isMobile;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    // Style priority: selected > unavailable > past > normal
+    Color bgColor;
+    Color borderColor;
+    Color textColor;
+
+    if (isSelected) {
+      bgColor = const Color(0xFFE12242);
+      borderColor = const Color(0xFFE12242);
+      textColor = Colors.white;
+    } else if (isUnavailable) {
+      bgColor = const Color(0xFFFFE4E8); // pink tint
+      borderColor = const Color(0xFFFFB3BE);
+      textColor = const Color(0xFFB0B0B0);
+    } else if (isPast) {
+      bgColor = const Color(0xFFF2F2F4);
+      borderColor = const Color(0xFFD5D5D8);
+      textColor = const Color(0xFFB0B0B0);
+    } else {
+      bgColor = const Color(0xFFF2F2F4);
+      borderColor = const Color(0xFFD5D5D8);
+      textColor = const Color(0xFF2B2B2B);
+    }
+
+    final needsStrikethrough = isUnavailable || isPast;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: isMobile ? 100 : 120,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: borderColor),
+        ),
+        child: Text(
+          slot.startTime,
+          style: TextStyle(
+            color: textColor,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            fontSize: isMobile ? 13 : 15,
+            decoration: needsStrikethrough
+                ? TextDecoration.lineThrough
+                : TextDecoration.none,
+            decorationColor: textColor,
+          ),
         ),
       ),
     );
