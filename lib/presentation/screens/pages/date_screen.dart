@@ -136,8 +136,32 @@ class _DateScreenState extends State<DateScreen> {
                   shape: BoxShape.rectangle,
                   borderRadius: BorderRadius.circular(12),
                 ),
+                outsideDecoration: BoxDecoration(
+                  shape: BoxShape.rectangle,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                disabledDecoration: BoxDecoration(
+                  shape: BoxShape.rectangle,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                holidayDecoration: BoxDecoration(
+                  shape: BoxShape.rectangle,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                rangeStartDecoration: BoxDecoration(
+                  shape: BoxShape.rectangle,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                rangeEndDecoration: BoxDecoration(
+                  shape: BoxShape.rectangle,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                withinRangeDecoration: BoxDecoration(
+                  shape: BoxShape.rectangle,
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 disabledTextStyle: const TextStyle(color: Color(0xFFD4D4D6)),
-                outsideTextStyle: const TextStyle(color: Color(0xFFD4D4D6)),
+                outsideTextStyle: const TextStyle(color: Colors.black),
               ),
               enabledDayPredicate: (day) {
                 // Disable past dates
