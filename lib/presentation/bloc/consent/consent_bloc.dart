@@ -2,27 +2,20 @@ import 'package:aaravpos/core/storage/secure_storage.dart';
 import 'package:aaravpos/domain/model/service_item.dart';
 import 'package:aaravpos/domain/repo/booking_repository.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 part 'consent_event.dart';
 part 'consent_state.dart';
 
 class ConsentBloc extends Bloc<ConsentEvent, ConsentState> {
-  ConsentBloc(this._repository, this._secureStorage)
-    : super(const ConsentState()) {
+  ConsentBloc(this._repository, SecureStorage _) : super(const ConsentState()) {
     on<ConsentCheckRequested>(_onCheckRequested);
     on<ConsentSignRequested>(_onSignRequested);
     on<ConsentReset>(_onReset);
   }
 
   final BookingRepository _repository;
-  final SecureStorage _secureStorage;
-
-  // Stored during check so sign can reuse them
-  String _customerId = '';
-  String _staffId = '';
-  String _outletId = '';
-  String _tenantId = '';
 
   Future<void> _onCheckRequested(
     ConsentCheckRequested event,
@@ -31,35 +24,97 @@ class ConsentBloc extends Bloc<ConsentEvent, ConsentState> {
     emit(state.copyWith(status: ConsentStatus.checking, errorMessage: null));
 
     try {
-      _customerId = event.customerId;
-      _staffId = await _secureStorage.getUserId() ?? '';
-      _outletId = await _secureStorage.getOutletId() ?? '';
-      _tenantId = await _secureStorage.getTenantId() ?? '';
-
-      // Find first service that requires consent
+      // Find services that require consent (consentFormId may be null — still check)
       final consentServices = event.services
-          .where((s) => s.consentRequired && s.consentFormId != null)
+          .where((s) => s.consentRequired)
           .toList();
 
       if (consentServices.isEmpty) {
-        // No consent needed at all → skip
+        debugPrint('✅ ConsentBloc: No services require consent → skipping');
         emit(state.copyWith(status: ConsentStatus.skipped));
         return;
       }
 
-      final primary = consentServices.first;
+      // Use first service that has a consentFormId, or fall back to first consent service
+      final primary = consentServices.firstWhere(
+        (s) => s.consentFormId != null && s.consentFormId!.isNotEmpty,
+        orElse: () => consentServices.first,
+      );
+
+      if (primary.consentFormId == null || primary.consentFormId!.isEmpty) {
+        // consentRequired=true but no consentFormId from service list API.
+        // Try calling the check API with just the serviceId — the server resolves the form.
+        debugPrint(
+          '⚠️ ConsentBloc: consentRequired but no consentFormId — calling check API with serviceId only',
+        );
+        try {
+          final result = await _repository.checkConsentStatus(
+            customerId: event.customerId,
+            consentFormId: primary.id, // use serviceId as fallback key
+            serviceId: primary.id,
+          );
+          debugPrint(
+            '📋 ConsentBloc (fallback): needsSignature=${result.needsSignature}, freq=${result.signingFrequency}',
+          );
+          if (!result.requiresDialog) {
+            emit(state.copyWith(status: ConsentStatus.skipped));
+            return;
+          }
+          emit(
+            state.copyWith(
+              status: ConsentStatus.needsSign,
+              consentText: result.consentText.isNotEmpty
+                  ? result.consentText
+                  : 'Please confirm your consent to proceed with this service.',
+              consentFormId: result.consentFormId.isNotEmpty
+                  ? result.consentFormId
+                  : primary.id,
+              signatureType: result.signatureType,
+              pendingServiceIds: consentServices.map((s) => s.id).toList(),
+            ),
+          );
+        } catch (_) {
+          // API failed — show generic checkbox consent as last resort
+          debugPrint(
+            '⚠️ ConsentBloc: check API failed, showing generic checkbox dialog',
+          );
+          emit(
+            state.copyWith(
+              status: ConsentStatus.needsSign,
+              consentText:
+                  'Please confirm your consent to proceed with this service.',
+              consentFormId: '',
+              signatureType: 'CHECKBOX_ONLY',
+              pendingServiceIds: consentServices.map((s) => s.id).toList(),
+            ),
+          );
+        }
+        return;
+      }
+
+      debugPrint(
+        '🔍 ConsentBloc: Checking consent for service ${primary.id}, form ${primary.consentFormId}',
+      );
       final result = await _repository.checkConsentStatus(
         customerId: event.customerId,
         consentFormId: primary.consentFormId!,
         serviceId: primary.id,
       );
 
+      debugPrint(
+        '📋 ConsentBloc: needsSignature=${result.needsSignature}, signingFrequency=${result.signingFrequency}',
+      );
+
       if (!result.requiresDialog) {
         // ONCE_PER_CUSTOMER and already signed → skip
+        debugPrint(
+          '✅ ConsentBloc: Already signed (ONCE_PER_CUSTOMER) → skipping',
+        );
         emit(state.copyWith(status: ConsentStatus.skipped));
         return;
       }
 
+      debugPrint('📝 ConsentBloc: Consent required → showing dialog');
       emit(
         state.copyWith(
           status: ConsentStatus.needsSign,
@@ -72,6 +127,7 @@ class ConsentBloc extends Bloc<ConsentEvent, ConsentState> {
         ),
       );
     } catch (e) {
+      debugPrint('❌ ConsentBloc: Error checking consent: $e');
       emit(
         state.copyWith(
           status: ConsentStatus.error,
@@ -85,28 +141,16 @@ class ConsentBloc extends Bloc<ConsentEvent, ConsentState> {
     ConsentSignRequested event,
     Emitter<ConsentState> emit,
   ) async {
-    emit(state.copyWith(status: ConsentStatus.signing, errorMessage: null));
-    try {
-      await _repository.signConsent(
-        customerId: _customerId,
-        consentFormId: state.consentFormId,
-        serviceIds: state.pendingServiceIds,
-        staffId: _staffId,
-        outletId: _outletId,
-        tenantId: _tenantId,
-        signatureType: event.signatureType,
-        imageUrl: event.imageUrl,
-        typedName: event.typedName,
-      );
-      emit(state.copyWith(status: ConsentStatus.signed));
-    } catch (e) {
-      emit(
-        state.copyWith(
-          status: ConsentStatus.needsSign, // keep dialog open
-          errorMessage: e.toString().replaceFirst('Exception: ', ''),
-        ),
-      );
-    }
+    // Store the signed data in state — actual POST consent/customer-sign
+    // is called by BookingBloc AFTER the appointment is created (needs appointmentId).
+    emit(
+      state.copyWith(
+        status: ConsentStatus.signed,
+        signedImageUrl: event.imageUrl,
+        signedTypedName: event.typedName,
+        isChecked: event.isChecked,
+      ),
+    );
   }
 
   void _onReset(ConsentReset event, Emitter<ConsentState> emit) {

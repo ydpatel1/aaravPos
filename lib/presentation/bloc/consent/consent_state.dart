@@ -18,15 +18,21 @@ class ConsentState extends Equatable {
     this.signatureType = 'SIGNATURE_IMAGE',
     this.pendingServiceIds = const [],
     this.errorMessage,
+    this.signedImageUrl,
+    this.signedTypedName,
+    this.isChecked = false,
   });
 
   final ConsentStatus status;
   final String consentText;
   final String consentFormId;
-  final String
-  signatureType; // "SIGNATURE_IMAGE" | "CHECKBOX_ONLY" | "TYPED_NAME"
+  final String signatureType;
   final List<String> pendingServiceIds;
   final String? errorMessage;
+  // Stored after user signs — passed to BookingBloc
+  final String? signedImageUrl;
+  final String? signedTypedName;
+  final bool isChecked;
 
   ConsentState copyWith({
     ConsentStatus? status,
@@ -35,6 +41,9 @@ class ConsentState extends Equatable {
     String? signatureType,
     List<String>? pendingServiceIds,
     String? errorMessage,
+    String? signedImageUrl,
+    String? signedTypedName,
+    bool? isChecked,
   }) {
     return ConsentState(
       status: status ?? this.status,
@@ -43,6 +52,9 @@ class ConsentState extends Equatable {
       signatureType: signatureType ?? this.signatureType,
       pendingServiceIds: pendingServiceIds ?? this.pendingServiceIds,
       errorMessage: errorMessage,
+      signedImageUrl: signedImageUrl ?? this.signedImageUrl,
+      signedTypedName: signedTypedName ?? this.signedTypedName,
+      isChecked: isChecked ?? this.isChecked,
     );
   }
 
@@ -54,5 +66,8 @@ class ConsentState extends Equatable {
     signatureType,
     pendingServiceIds,
     errorMessage,
+    signedImageUrl,
+    signedTypedName,
+    isChecked,
   ];
 }

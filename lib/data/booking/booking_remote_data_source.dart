@@ -366,4 +366,110 @@ class BookingRemoteDataSource {
       throw Exception('Failed to sign consent: ${e.toString()}');
     }
   }
+
+  /// POST appointment — book a future appointment
+  /// Payload matches API 9 exactly.
+  Future<String> submitAppointment({
+    required bool isCheckIn,
+    required String customerId,
+    required String staffId,
+    required String outletId,
+    required String tenantId,
+    required List<String> serviceIds,
+    required List<String> slotIds,
+    required String date,
+    required String startTime,
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String phone,
+  }) async {
+    try {
+      final endpoint = isCheckIn ? 'appointment/checkin' : 'appointment';
+
+      final customerPayload = <String, dynamic>{
+        'first_name': firstName.trim(),
+        'last_name': lastName.trim(),
+        'email': email,
+        'phone': phone, // full phone e.g. "+1XXXXXXXXXX"
+        'gender': '',
+        'date_of_birth': '',
+      };
+
+      final payload = <String, dynamic>{
+        'tenantId': tenantId,
+        'outletId': outletId,
+        'staffId': staffId,
+        'serviceIds': serviceIds,
+        'slotIds': slotIds,
+        'date': date,
+        'startTime': startTime,
+        'customer': customerPayload,
+        'requiresConsent': false,
+        if (!isCheckIn) 'isWalkIn': false,
+      };
+
+      final response = await _apiService.post(endpoint, data: payload);
+      final body = response.data;
+      if (body is Map<String, dynamic>) {
+        if (body['success'] == false) {
+          throw Exception(body['message'] as String? ?? 'Booking failed');
+        }
+        final data = body['data'] as Map<String, dynamic>?;
+        return data?['id'] as String? ??
+            body['id'] as String? ??
+            'BK-${DateTime.now().millisecondsSinceEpoch}';
+      }
+      return 'BK-${DateTime.now().millisecondsSinceEpoch}';
+    } catch (e) {
+      throw Exception('Failed to submit booking: ${e.toString()}');
+    }
+  }
+
+  /// POST consent/customer-sign — API 8
+  /// Called AFTER booking to attach the signed consent to the appointment.
+  Future<void> signConsentWithAppointment({
+    required String tenantId,
+    required String appointmentId,
+    required String customerId,
+    required List<String> serviceIds,
+    required String outletId,
+    required String consentFormId,
+    required String staffId,
+    required String signatureType,
+    String? imageUrl, // base64 PNG data URI — for SIGNATURE_IMAGE
+    String? typedName, // for TYPED_NAME
+    bool isChecked = false, // for CHECKBOX_ONLY
+  }) async {
+    try {
+      final payload = <String, dynamic>{
+        'tenantId': tenantId,
+        'appointmentId': appointmentId,
+        'customerId': customerId,
+        'serviceIds': serviceIds,
+        'outletId': outletId,
+        'concentFormId':
+            consentFormId, // note: API uses "concentFormId" (typo in their API)
+        'signatureType': signatureType,
+        'channel': 'POS',
+        'staffId': staffId,
+        if (signatureType == 'SIGNATURE_IMAGE' && imageUrl != null)
+          'imageUrl': imageUrl,
+        if (signatureType == 'TYPED_NAME' && typedName != null)
+          'typedName': typedName,
+        if (signatureType == 'CHECKBOX_ONLY') 'isChecked': isChecked,
+      };
+
+      final response = await _apiService.post(
+        'consent/customer-sign',
+        data: payload,
+      );
+      final body = response.data;
+      if (body is Map<String, dynamic> && body['success'] == false) {
+        throw Exception(body['message'] as String? ?? 'Consent sign failed');
+      }
+    } catch (e) {
+      throw Exception('Failed to sign consent: ${e.toString()}');
+    }
+  }
 }

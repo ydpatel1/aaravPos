@@ -11,14 +11,17 @@ class ConsentCheckResult {
   final String signingFrequency; // "ONCE_PER_CUSTOMER" | "EVERY_TIME"
   final String consentFormId;
   final String consentText;
-  final String signatureType; // "SIGNATURE_IMAGE" | "CHECKBOX_ONLY" | "TYPED_NAME"
+  final String
+  signatureType; // "SIGNATURE_IMAGE" | "CHECKBOX_ONLY" | "TYPED_NAME"
 
-  /// True means we must show the consent dialog
+  /// True means we must show the consent dialog.
+  /// Only skip if ONCE_PER_CUSTOMER AND customer has already signed (needsSignature == false).
+  /// For EVERY_TIME, always show the dialog regardless of needsSignature.
   bool get requiresDialog {
     if (signingFrequency == 'ONCE_PER_CUSTOMER' && !needsSignature) {
-      return false;
+      return false; // Already signed once — skip
     }
-    return needsSignature;
+    return true; // EVERY_TIME always shows, or ONCE_PER_CUSTOMER not yet signed
   }
 
   factory ConsentCheckResult.fromJson(Map<String, dynamic> json) {

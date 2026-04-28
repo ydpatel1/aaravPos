@@ -80,7 +80,11 @@ class ServiceItem extends Equatable {
       minPrice: minPrice,
       maxPrice: maxPrice,
       consentRequired: json['requires_consent'] as bool? ?? false,
+      // Try consent_rule_id first, fall back to consent_form_id
       consentFormId: json['consent_form_id'] as String?,
+      // consentFormId:
+      //     json['consent_rule_id'] as String? ??
+      //     json['consent_form_id'] as String?,
     );
   }
 

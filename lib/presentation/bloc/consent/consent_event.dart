@@ -27,14 +27,16 @@ class ConsentSignRequested extends ConsentEvent {
     required this.signatureType,
     this.imageUrl,
     this.typedName,
+    this.isChecked = false,
   });
 
   final String signatureType;
-  final String? imageUrl; // base64 data URI for SIGNATURE_IMAGE
-  final String? typedName; // for TYPED_NAME
+  final String? imageUrl;
+  final String? typedName;
+  final bool isChecked;
 
   @override
-  List<Object?> get props => [signatureType, imageUrl, typedName];
+  List<Object?> get props => [signatureType, imageUrl, typedName, isChecked];
 }
 
 class ConsentReset extends ConsentEvent {
