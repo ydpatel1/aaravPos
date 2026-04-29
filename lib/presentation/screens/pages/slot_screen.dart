@@ -4,11 +4,11 @@ import 'package:aaravpos/presentation/bloc/slot/slot_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shimmer/shimmer.dart';
 
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/utils/extensions/context_extension.dart';
 import '../../../../core/utils/extensions/space_extension.dart';
+import '../../../../shared/widgets/app_shimmer.dart';
 import '../../../../shared/widgets/common_app_bar.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/kiosk_bottom_bar.dart';
@@ -106,23 +106,7 @@ class _SlotScreenState extends State<SlotScreen> {
         child: BlocBuilder<SlotBloc, SlotState>(
           builder: (context, state) {
             if (state.isLoading) {
-              return Shimmer.fromColors(
-                baseColor: Colors.grey.shade300,
-                highlightColor: Colors.grey.shade100,
-                child: ListView(
-                  children: List<Widget>.generate(
-                    9,
-                    (_) => Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      height: 54,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                  ),
-                ),
-              );
+              return _SlotShimmer(isMobile: context.isMobile);
             }
 
             if (state.errorMessage != null) {
@@ -296,6 +280,48 @@ class _SlotPill extends StatelessWidget {
             decorationColor: textColor,
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Shimmer skeleton that matches the slot screen layout:
+/// section header pill → row of slot chips, repeated for Morning/Afternoon/Evening
+class _SlotShimmer extends StatelessWidget {
+  const _SlotShimmer({required this.isMobile});
+
+  final bool isMobile;
+
+  @override
+  Widget build(BuildContext context) {
+    final chipWidth = isMobile ? 100.0 : 120.0;
+
+    return AppShimmer(
+      child: ListView(
+        children: [
+          for (int section = 0; section < 3; section++) ...[
+            // Section header pill
+            ShimmerBox(height: 48, borderRadius: 12),
+            const SizedBox(height: 12),
+            // Two rows of slot chips
+            for (int row = 0; row < 2; row++) ...[
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: List.generate(
+                  isMobile ? 3 : 4,
+                  (_) => ShimmerBox(
+                    height: 44,
+                    width: chipWidth,
+                    borderRadius: 12,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
+            const SizedBox(height: 20),
+          ],
+        ],
       ),
     );
   }

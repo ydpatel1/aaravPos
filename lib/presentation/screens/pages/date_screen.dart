@@ -33,7 +33,7 @@ class _DateScreenState extends State<DateScreen> {
         ),
       ),
       bottomNavigationBar: KioskBottomBar(
-        total: 'Total: \$215.00',
+        total: 'Total: ${session.formattedTotal}',
         subtitle: '${session.selectedServices.length} Service Selected',
         primaryLabel: 'Continue',
         primaryEnabled: _selectedDay != null,

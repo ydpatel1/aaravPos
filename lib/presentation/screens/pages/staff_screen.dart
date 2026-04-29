@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_spacing.dart';
 import '../../../../core/router/app_routes.dart';
+import '../../../../shared/widgets/app_shimmer.dart';
 import '../../../../shared/widgets/common_app_bar.dart';
 import '../../../../shared/widgets/error_state_widget.dart';
 import '../../../../shared/widgets/kiosk_bottom_bar.dart';
@@ -120,7 +121,16 @@ class _StaffScreenState extends State<StaffScreen> {
           child: BlocBuilder<StaffBloc, StaffState>(
             builder: (context, state) {
               if (state.isLoading) {
-                return const Center(child: CircularProgressIndicator());
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    final cols = constraints.maxWidth < 550
+                        ? 2
+                        : constraints.maxWidth < 900
+                        ? 3
+                        : 4;
+                    return _StaffShimmer(cols: cols);
+                  },
+                );
               }
               if (state.errorMessage != null) {
                 return ErrorStateWidget(
@@ -161,6 +171,50 @@ class _StaffScreenState extends State<StaffScreen> {
             },
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Shimmer skeleton that matches the staff grid layout
+class _StaffShimmer extends StatelessWidget {
+  const _StaffShimmer({required this.cols});
+
+  final int cols;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppShimmer(
+      child: Column(
+        children: [
+          Expanded(
+            child: GridView.builder(
+              padding: EdgeInsets.zero,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: cols,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 0.75,
+              ),
+              itemCount: cols * 2,
+              itemBuilder: (_, __) => Column(
+                children: [
+                  // Avatar circle
+                  ShimmerBox(height: 84, width: 84, borderRadius: 42),
+                  const SizedBox(height: 12),
+                  // Name line
+                  ShimmerBox(height: 16, borderRadius: 8),
+                  const SizedBox(height: 6),
+                  // Role line (shorter)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: ShimmerBox(height: 12, borderRadius: 6),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
