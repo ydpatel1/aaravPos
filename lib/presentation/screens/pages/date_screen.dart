@@ -18,7 +18,16 @@ class DateScreen extends StatefulWidget {
 
 class _DateScreenState extends State<DateScreen> {
   DateTime _focusedDay = DateTime.now();
-  DateTime? _selectedDay;
+  DateTime? _selectedDay = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-select today in session so Continue is enabled immediately
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<SessionBloc>().setDate(DateTime.now());
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -110,6 +119,7 @@ class _DateScreenState extends State<DateScreen> {
                 ),
               ),
               calendarStyle: CalendarStyle(
+                cellMargin: EdgeInsets.symmetric(horizontal: 2,vertical: 8),
                 todayDecoration: BoxDecoration(
                   color: const Color(0xFFE12242).withValues(alpha: 0.2),
                   shape: BoxShape.rectangle,
@@ -117,12 +127,14 @@ class _DateScreenState extends State<DateScreen> {
                 ),
                 todayTextStyle: const TextStyle(
                   color: Color(0xFFE12242),
+
                   fontWeight: FontWeight.w700,
                 ),
                 selectedDecoration: BoxDecoration(
                   color: const Color(0xFFE12242),
-                  shape: BoxShape.rectangle,
+                   shape: BoxShape.rectangle,
                   borderRadius: BorderRadius.circular(12),
+                  
                 ),
                 selectedTextStyle: const TextStyle(
                   color: Colors.white,
