@@ -176,7 +176,8 @@ class _StaffScreenState extends State<StaffScreen> {
   }
 }
 
-/// Shimmer skeleton that matches the staff grid layout
+/// Shimmer skeleton that matches the StaffCard layout exactly:
+/// colored card → avatar circle → name line → role line
 class _StaffShimmer extends StatelessWidget {
   const _StaffShimmer({required this.cols});
 
@@ -185,36 +186,46 @@ class _StaffShimmer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppShimmer(
-      child: Column(
-        children: [
-          Expanded(
-            child: GridView.builder(
-              padding: EdgeInsets.zero,
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: cols,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 0.75,
-              ),
-              itemCount: cols * 2,
-              itemBuilder: (_, __) => Column(
-                children: [
-                  // Avatar circle
-                  ShimmerBox(height: 84, width: 84, borderRadius: 42),
-                  const SizedBox(height: 12),
-                  // Name line
-                  ShimmerBox(height: 16, borderRadius: 8),
-                  const SizedBox(height: 6),
-                  // Role line (shorter)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: ShimmerBox(height: 12, borderRadius: 6),
-                  ),
-                ],
-              ),
-            ),
+      child: SingleChildScrollView(
+        child: AlignedGridView.count(
+          crossAxisCount: cols,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: 6,
+        itemBuilder: (_, __) => Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
           ),
-        ],
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Avatar circle with border ring — matches _buildAvatar()
+              Container(
+                width: 82, // 76 image + 3*2 border
+                height: 82,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFD4D4D6),
+                  border: Border.all(color: Colors.white, width: 3),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Name line — full width, bold
+              ShimmerBox(height: 14, borderRadius: 6),
+              const SizedBox(height: 8),
+              // Role line — shorter, centered
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: ShimmerBox(height: 11, borderRadius: 5),
+              ),
+            ],
+          ),
+        ),
+      ),
       ),
     );
   }
