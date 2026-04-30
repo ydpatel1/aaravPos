@@ -63,6 +63,7 @@ class ConsentBloc extends Bloc<ConsentEvent, ConsentState> {
           emit(
             state.copyWith(
               status: ConsentStatus.needsSign,
+              consentHeading: result.consentHeading,
               consentText: result.consentText.isNotEmpty
                   ? result.consentText
                   : 'Please confirm your consent to proceed with this service.',
@@ -81,6 +82,7 @@ class ConsentBloc extends Bloc<ConsentEvent, ConsentState> {
           emit(
             state.copyWith(
               status: ConsentStatus.needsSign,
+              consentHeading: '',
               consentText:
                   'Please confirm your consent to proceed with this service.',
               consentFormId: '',
@@ -118,6 +120,7 @@ class ConsentBloc extends Bloc<ConsentEvent, ConsentState> {
       emit(
         state.copyWith(
           status: ConsentStatus.needsSign,
+          consentHeading: result.consentHeading,
           consentText: result.consentText,
           consentFormId: result.consentFormId.isNotEmpty
               ? result.consentFormId

@@ -34,6 +34,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   Customer? _selectedCustomer;
   bool _showSuggestions = false;
+  bool _autoValidate = false;
+  String? _phoneError;
+  String? _firstNameError;
+  String? _emailError;
   Country _selectedCountry = Country(
     phoneCode: '1',
     countryCode: 'US',
@@ -90,14 +94,71 @@ class _ReviewScreenState extends State<ReviewScreen> {
   }
 
   void _onPhoneChanged(String value) {
+    // Show suggestions only when 8 or 9 digits are typed (spec §4)
+    final shouldSearch = value.length == 8 || value.length == 9;
     setState(() {
-      _showSuggestions = value.length >= 3;
+      _showSuggestions = shouldSearch;
+      if (_autoValidate) _phoneError = _validatePhone(value);
     });
 
-    // Trigger search with debouncing (only phone number without country code)
-    if (value.length >= 3) {
-      context.read<CustomerBloc>().search(value);
+    if (shouldSearch) {
+      // Search with countryCode+phone as the search param (spec §4 API)
+      final searchQuery = '+${_selectedCountry.phoneCode}$value';
+      context.read<CustomerBloc>().search(searchQuery);
+    } else if (value.length < 8) {
+      // Clear customer selection when below threshold (spec §4)
+      _clearCustomerSelection();
     }
+  }
+
+  void _clearCustomerSelection() {
+    setState(() {
+      _selectedCustomer = null;
+      _showSuggestions = false;
+    });
+    context.read<SessionBloc>().setCustomer('', customerId: null);
+    context.read<ConsentBloc>().add(const ConsentReset());
+  }
+
+  /// Returns an error string or null if valid.
+  String? _validatePhone(String value) {
+    final email = _emailController.text.trim();
+    if (value.isEmpty && email.isEmpty) return 'Phone or email is required';
+    if (value.isNotEmpty && value.length != 10) {
+      return 'Phone must be exactly 10 digits';
+    }
+    return null;
+  }
+
+  String? _validateFirstName(String value) {
+    if (value.trim().isEmpty) return 'First name is required';
+    return null;
+  }
+
+  String? _validateEmail(String value) {
+    if (value.isEmpty) return null; // optional
+    if (!value.contains('@')) return 'Enter a valid email address';
+    return null;
+  }
+
+  /// Returns true if form is valid, false otherwise.
+  bool _validateForm() {
+    final phone = _phoneController.text.trim();
+    final email = _emailController.text.trim();
+    final firstName = _firstNameController.text.trim();
+
+    final phoneErr = _validatePhone(phone);
+    final firstNameErr = _validateFirstName(firstName);
+    final emailErr = _validateEmail(email);
+
+    setState(() {
+      _autoValidate = true;
+      _phoneError = phoneErr;
+      _firstNameError = firstNameErr;
+      _emailError = emailErr;
+    });
+
+    return phoneErr == null && firstNameErr == null && emailErr == null;
   }
 
   Future<void> _openConsentDialog(BuildContext ctx) async {
@@ -254,12 +315,17 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 total: 'Total: ${session.formattedTotal}',
                 subtitle: '${session.selectedServices.length} Service Selected',
                 secondaryLabel: 'Cancel',
-                onSecondary: () => context.pop(),
+                onSecondary: () => context.go(
+                  AppRoutes.home,
+                ), // clears stack back to home (spec §6)
                 primaryLabel: buttonLabel,
                 primaryEnabled: hasCustomer && !isLoading,
                 onPrimary: isLoading
                     ? null
                     : () {
+                        // Validate form first (spec §7)
+                        if (!_validateForm()) return;
+                        FocusScope.of(context).unfocus();
                         final customerId = session.selectedCustomerId ?? '';
                         context.read<ConsentBloc>().add(
                           ConsentCheckRequested(
@@ -288,6 +354,27 @@ class _ReviewScreenState extends State<ReviewScreen> {
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
                   ),
                   16.vs,
+                  // Outlet name (spec §2)
+                  if (session.selectedStaff != null) ...[
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.store_outlined,
+                          size: 18,
+                          color: Color(0xFF737373),
+                        ),
+                        8.hs,
+                        Text(
+                          session.selectedStaff!.fullName,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: Color(0xFF737373),
+                          ),
+                        ),
+                      ],
+                    ),
+                    12.vs,
+                  ],
                   ...session.selectedServices.map(
                     (service) => Padding(
                       padding: const EdgeInsets.only(bottom: 16),
@@ -490,12 +577,24 @@ class _ReviewScreenState extends State<ReviewScreen> {
                       ),
                     ],
                   ),
+                  // Inline phone validation error (spec §7)
+                  if (_autoValidate && _phoneError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6, left: 4),
+                      child: Text(
+                        _phoneError!,
+                        style: const TextStyle(
+                          color: Color(0xFFE12242),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
 
                   // Customer suggestions as cards below phone field
                   if (_showSuggestions && customerState.results.isNotEmpty)
                     ...customerState.results.map(
                       (customer) => Container(
-                        margin: EdgeInsets.only(top: 8),
+                        margin: const EdgeInsets.only(top: 8),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
@@ -516,8 +615,14 @@ class _ReviewScreenState extends State<ReviewScreen> {
                               fontSize: 16,
                             ),
                           ),
+                          // Spec §4: show Full Name + Phone + Email
                           subtitle: Text(
-                            'Phone: ${customer.phone}',
+                            [
+                              customer.phone,
+                              if (customer.email != null &&
+                                  customer.email!.isNotEmpty)
+                                customer.email!,
+                            ].join(' · '),
                             style: const TextStyle(
                               color: Color(0xFF737373),
                               fontSize: 14,
@@ -548,6 +653,15 @@ class _ReviewScreenState extends State<ReviewScreen> {
                   8.vs,
                   TextField(
                     controller: _firstNameController,
+                    onChanged: (_) {
+                      if (_autoValidate) {
+                        setState(() {
+                          _firstNameError = _validateFirstName(
+                            _firstNameController.text,
+                          );
+                        });
+                      }
+                    },
                     decoration: InputDecoration(
                       hintText: 'Enter Your First Name Here',
                       hintStyle: const TextStyle(color: Color(0xFFB0B0B0)),
@@ -555,6 +669,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                         Icons.person_outline,
                         color: Color(0xFF737373),
                       ),
+                      errorText: _autoValidate ? _firstNameError : null,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -614,6 +729,17 @@ class _ReviewScreenState extends State<ReviewScreen> {
                   8.vs,
                   TextField(
                     controller: _emailController,
+                    onChanged: (_) {
+                      if (_autoValidate) {
+                        setState(() {
+                          _emailError = _validateEmail(_emailController.text);
+                          // Also re-validate phone (phone OR email required)
+                          _phoneError = _validatePhone(
+                            _phoneController.text.trim(),
+                          );
+                        });
+                      }
+                    },
                     decoration: InputDecoration(
                       hintText: 'Enter Your Email Here',
                       hintStyle: const TextStyle(color: Color(0xFFB0B0B0)),
@@ -621,6 +747,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                         Icons.email_outlined,
                         color: Color(0xFF737373),
                       ),
+                      errorText: _autoValidate ? _emailError : null,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -765,12 +892,12 @@ class _ConsentDialogState extends State<_ConsentDialog> {
           ),
           child: ConstrainedBox(
             constraints: BoxConstraints(
-              maxWidth: 680,
-              maxHeight: MediaQuery.sizeOf(context).height * 0.92,
+              maxWidth: 900, // spec §10: 900×700
+              maxHeight: 700,
             ),
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: const Color(0xFFF5F5F5), // spec §10
                 borderRadius: BorderRadius.circular(24),
               ),
               child: SingleChildScrollView(
@@ -787,7 +914,10 @@ class _ConsentDialogState extends State<_ConsentDialog> {
                         12,
                       ),
                       child: Text(
-                        'Consent & Acknowledgment Agreement',
+                        // spec §10: title from service.consentTemplate.heading
+                        state.consentHeading.isNotEmpty
+                            ? state.consentHeading
+                            : 'Consent Form Title',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: isMobile ? 16 : 20,
@@ -1017,7 +1147,7 @@ class _ConsentDialogState extends State<_ConsentDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Type your full name',
+            'Type Your Name', // spec §10
             style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
           ),
           8.vs,

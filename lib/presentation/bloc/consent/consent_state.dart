@@ -13,6 +13,7 @@ enum ConsentStatus {
 class ConsentState extends Equatable {
   const ConsentState({
     this.status = ConsentStatus.initial,
+    this.consentHeading = '',
     this.consentText = '',
     this.consentFormId = '',
     this.signatureType = 'SIGNATURE_IMAGE',
@@ -24,6 +25,7 @@ class ConsentState extends Equatable {
   });
 
   final ConsentStatus status;
+  final String consentHeading; // from service.consentTemplate.heading
   final String consentText;
   final String consentFormId;
   final String signatureType;
@@ -36,6 +38,7 @@ class ConsentState extends Equatable {
 
   ConsentState copyWith({
     ConsentStatus? status,
+    String? consentHeading,
     String? consentText,
     String? consentFormId,
     String? signatureType,
@@ -47,6 +50,7 @@ class ConsentState extends Equatable {
   }) {
     return ConsentState(
       status: status ?? this.status,
+      consentHeading: consentHeading ?? this.consentHeading,
       consentText: consentText ?? this.consentText,
       consentFormId: consentFormId ?? this.consentFormId,
       signatureType: signatureType ?? this.signatureType,
@@ -61,6 +65,7 @@ class ConsentState extends Equatable {
   @override
   List<Object?> get props => [
     status,
+    consentHeading,
     consentText,
     consentFormId,
     signatureType,
