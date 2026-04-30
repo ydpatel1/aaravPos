@@ -72,7 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               _ModeCard(
                                 title: 'Appointment',
                                 icon: Icons.calendar_month_outlined,
-                                enabled: !isOutletOpen,
+                                enabled: true,
                               ),
                               const SizedBox(height: 16),
                               _ModeCard(
@@ -90,7 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   child: _ModeCard(
                                     title: 'Appointment',
                                     icon: Icons.calendar_month_outlined,
-                                    enabled: !isOutletOpen,
+                                    enabled: true,
                                   ),
                                 ),
                                 const SizedBox(width: 22),
