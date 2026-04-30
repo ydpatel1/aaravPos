@@ -28,17 +28,42 @@ class OutletStatus {
     );
   }
 
-  /// Returns true only if current time is between [openTime] and [closeTime].
-  /// Expects full datetime strings: "2026-04-28 07:00:00"
+  /// Returns true only if the current time-of-day is between [openTime] and [closeTime].
+  /// Ignores the date portion — only HH:mm:ss is compared.
+  /// Supports overnight ranges (e.g. 22:00 → 02:00).
+  /// Expects strings like "2026-04-28 07:00:00" or "07:00:00" or "07:00".
   static bool _isWithinTimeRange(String openTime, String closeTime) {
     try {
       if (openTime.isEmpty || closeTime.isEmpty) return false;
 
-      final open = DateTime.parse(openTime.replaceFirst(' ', 'T'));
-      final close = DateTime.parse(closeTime.replaceFirst(' ', 'T'));
-      final now = DateTime.now();
+      // Extract time portion only — take the last segment after a space or use as-is
+      final openPart = openTime.contains(' ')
+          ? openTime.split(' ').last
+          : openTime;
+      final closePart = closeTime.contains(' ')
+          ? closeTime.split(' ').last
+          : closeTime;
 
-      return now.isAfter(open) && now.isBefore(close);
+      // Parse HH:mm or HH:mm:ss into minutes-since-midnight
+      int toMinutes(String t) {
+        final parts = t.split(':');
+        final h = int.parse(parts[0]);
+        final m = int.parse(parts[1]);
+        return h * 60 + m;
+      }
+
+      final openMin = toMinutes(openPart);
+      final closeMin = toMinutes(closePart);
+      final now = DateTime.now();
+      final nowMin = now.hour * 60 + now.minute;
+
+      if (openMin <= closeMin) {
+        // Normal range: e.g. 08:00 → 20:00
+        return nowMin >= openMin && nowMin < closeMin;
+      } else {
+        // Overnight range: e.g. 22:00 → 02:00
+        return nowMin >= openMin || nowMin < closeMin;
+      }
     } catch (_) {
       return false;
     }
