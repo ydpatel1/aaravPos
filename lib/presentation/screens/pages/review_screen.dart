@@ -398,7 +398,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
                                     fontSize: 16,
                                   ),
                                 ),
-                                if (service.consentRequired)
+                                if (service.consentRequired &&
+                                    service.consentTemplate?.id != null &&
+                                    service.consentTemplate!.id!.isNotEmpty)
                                   Container(
                                     margin: const EdgeInsets.only(top: 4),
                                     padding: const EdgeInsets.symmetric(

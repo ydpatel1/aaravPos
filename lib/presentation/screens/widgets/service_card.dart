@@ -8,6 +8,7 @@ class ServiceCard extends StatelessWidget {
     required this.duration,
     required this.price,
     required this.consentRequired,
+    this.consentTemplateId,
     required this.isSelected,
     required this.onTap,
     super.key,
@@ -17,8 +18,18 @@ class ServiceCard extends StatelessWidget {
   final int duration;
   final double price;
   final bool consentRequired;
+
+  /// From service.consentTemplate?.id — badge only shows when this is non-null/non-empty.
+  final String? consentTemplateId;
+
   final bool isSelected;
   final VoidCallback onTap;
+
+  /// True when all three conditions are met (matches review screen logic).
+  bool get _showConsentBadge =>
+      consentRequired &&
+      consentTemplateId != null &&
+      consentTemplateId!.isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +74,7 @@ class ServiceCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 6),
-            if (consentRequired)
+            if (_showConsentBadge)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(

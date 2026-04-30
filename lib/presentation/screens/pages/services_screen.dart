@@ -194,6 +194,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                                   duration: item.durationMin,
                                   price: item.price,
                                   consentRequired: item.consentRequired,
+                                  consentTemplateId: item.consentTemplate?.id,
                                   isSelected: session.selectedServices.contains(
                                     item,
                                   ),

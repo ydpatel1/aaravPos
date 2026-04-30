@@ -3,7 +3,14 @@ import 'package:equatable/equatable.dart';
 // ── Consent sub-models ────────────────────────────────────────────────────────
 
 class ConsentTemplate {
-  const ConsentTemplate({required this.heading, required this.consent});
+  const ConsentTemplate({
+    required this.id,
+    required this.heading,
+    required this.consent,
+  });
+
+  /// Template ID — used to determine if badge should show
+  final String? id;
 
   /// Dialog title — from service.consent_template.heading
   final String heading;
@@ -13,6 +20,7 @@ class ConsentTemplate {
 
   factory ConsentTemplate.fromJson(Map<String, dynamic> json) {
     return ConsentTemplate(
+      id: json['id'] as String?,
       heading: json['heading'] as String? ?? '',
       consent: json['consent'] as String? ?? '',
     );
