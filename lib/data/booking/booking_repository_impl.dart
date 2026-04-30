@@ -64,30 +64,30 @@ class BookingRepositoryImpl implements BookingRepository {
     return ConsentCheckResult.fromJson(raw);
   }
 
-  @override
-  Future<void> signConsent({
-    required String customerId,
-    required String consentFormId,
-    required List<String> serviceIds,
-    required String staffId,
-    required String outletId,
-    required String tenantId,
-    required String signatureType,
-    String? imageUrl,
-    String? typedName,
-  }) async {
-    return _remoteDataSource.signConsent(
-      customerId: customerId,
-      consentFormId: consentFormId,
-      serviceIds: serviceIds,
-      staffId: staffId,
-      outletId: outletId,
-      tenantId: tenantId,
-      signatureType: signatureType,
-      imageUrl: imageUrl,
-      typedName: typedName,
-    );
-  }
+  // @override
+  // Future<void> signConsent({
+  //   required String customerId,
+  //   required String consentFormId,
+  //   required List<String> serviceIds,
+  //   required String staffId,
+  //   required String outletId,
+  //   required String tenantId,
+  //   required String signatureType,
+  //   String? imageUrl,
+  //   String? typedName,
+  // }) async {
+  //   return _remoteDataSource.signConsent(
+  //     customerId: customerId,
+  //     consentFormId: consentFormId,
+  //     serviceIds: serviceIds,
+  //     staffId: staffId,
+  //     outletId: outletId,
+  //     tenantId: tenantId,
+  //     signatureType: signatureType,
+  //     imageUrl: imageUrl,
+  //     typedName: typedName,
+  //   );
+  // }
 
   @override
   Future<String> submitBooking({

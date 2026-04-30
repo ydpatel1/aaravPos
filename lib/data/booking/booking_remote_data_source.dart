@@ -308,7 +308,8 @@ class BookingRemoteDataSource {
     }
   }
 
-  /// GET consent/check/{customerId}/{consentFormId}?serviceId={serviceId}
+  /// GET concent/check/{customerId}/{consentFormId}?serviceId={serviceId}
+  /// Note: API uses "concent" (typo in their API)
   Future<Map<String, dynamic>> checkConsentStatus({
     required String customerId,
     required String consentFormId,
@@ -316,7 +317,7 @@ class BookingRemoteDataSource {
   }) async {
     try {
       final response = await _apiService.get(
-        'consent/check/$customerId/$consentFormId',
+        'concent/check/$customerId/$consentFormId',
         queryParameters: <String, dynamic>{'serviceId': serviceId},
       );
       final body = response.data;
@@ -329,33 +330,42 @@ class BookingRemoteDataSource {
     }
   }
 
-  /// POST consent/customer-sign
-  Future<void> signConsent({
-    required String customerId,
-    required String consentFormId,
-    required List<String> serviceIds,
-    required String staffId,
-    required String outletId,
+  /// POST concent/customer-sign — API 8
+  /// Note: API uses "concent" (typo in their API)
+  /// Called AFTER booking to attach the signed consent to the appointment.
+  Future<void> signConsentWithAppointment({
     required String tenantId,
+    required String appointmentId,
+    required String customerId,
+    required List<String> serviceIds,
+    required String outletId,
+    required String consentFormId,
+    required String staffId,
     required String signatureType,
     String? imageUrl,
     String? typedName,
+    bool isChecked = false,
   }) async {
     try {
       final payload = <String, dynamic>{
         'tenantId': tenantId,
+        'appointmentId': appointmentId,
         'customerId': customerId,
         'serviceIds': serviceIds,
         'outletId': outletId,
-        'consentFormId': consentFormId,
+        'concentFormId': consentFormId, // API uses "concentFormId" (their typo)
         'signatureType': signatureType,
         'channel': 'POS',
         'staffId': staffId,
-        if (imageUrl != null) 'imageUrl': imageUrl,
-        if (typedName != null) 'typedName': typedName,
+        if (signatureType == 'SIGNATURE_IMAGE' && imageUrl != null)
+          'imageUrl': imageUrl,
+        if (signatureType == 'TYPED_NAME' && typedName != null)
+          'typedName': typedName,
+        if (signatureType == 'CHECKBOX_ONLY') 'isChecked': isChecked,
       };
+
       final response = await _apiService.post(
-        'consent/customer-sign',
+        'concent/customer-sign',
         data: payload,
       );
       final body = response.data;
@@ -367,8 +377,6 @@ class BookingRemoteDataSource {
     }
   }
 
-  /// POST appointment — book a future appointment
-  /// Payload matches API 9 exactly.
   Future<String> submitAppointment({
     required bool isCheckIn,
     required String customerId,
@@ -423,53 +431,6 @@ class BookingRemoteDataSource {
       return 'BK-${DateTime.now().millisecondsSinceEpoch}';
     } catch (e) {
       throw Exception('Failed to submit booking: ${e.toString()}');
-    }
-  }
-
-  /// POST consent/customer-sign — API 8
-  /// Called AFTER booking to attach the signed consent to the appointment.
-  Future<void> signConsentWithAppointment({
-    required String tenantId,
-    required String appointmentId,
-    required String customerId,
-    required List<String> serviceIds,
-    required String outletId,
-    required String consentFormId,
-    required String staffId,
-    required String signatureType,
-    String? imageUrl, // base64 PNG data URI — for SIGNATURE_IMAGE
-    String? typedName, // for TYPED_NAME
-    bool isChecked = false, // for CHECKBOX_ONLY
-  }) async {
-    try {
-      final payload = <String, dynamic>{
-        'tenantId': tenantId,
-        'appointmentId': appointmentId,
-        'customerId': customerId,
-        'serviceIds': serviceIds,
-        'outletId': outletId,
-        'concentFormId':
-            consentFormId, // note: API uses "concentFormId" (typo in their API)
-        'signatureType': signatureType,
-        'channel': 'POS',
-        'staffId': staffId,
-        if (signatureType == 'SIGNATURE_IMAGE' && imageUrl != null)
-          'imageUrl': imageUrl,
-        if (signatureType == 'TYPED_NAME' && typedName != null)
-          'typedName': typedName,
-        if (signatureType == 'CHECKBOX_ONLY') 'isChecked': isChecked,
-      };
-
-      final response = await _apiService.post(
-        'consent/customer-sign',
-        data: payload,
-      );
-      final body = response.data;
-      if (body is Map<String, dynamic> && body['success'] == false) {
-        throw Exception(body['message'] as String? ?? 'Consent sign failed');
-      }
-    } catch (e) {
-      throw Exception('Failed to sign consent: ${e.toString()}');
     }
   }
 }

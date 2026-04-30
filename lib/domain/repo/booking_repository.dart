@@ -17,17 +17,17 @@ abstract class BookingRepository {
     required String serviceId,
   });
 
-  Future<void> signConsent({
-    required String customerId,
-    required String consentFormId,
-    required List<String> serviceIds,
-    required String staffId,
-    required String outletId,
-    required String tenantId,
-    required String signatureType,
-    String? imageUrl,
-    String? typedName,
-  });
+  // Future<void> signConsent({
+  //   required String customerId,
+  //   required String consentFormId,
+  //   required List<String> serviceIds,
+  //   required String staffId,
+  //   required String outletId,
+  //   required String tenḍantId,
+  //   required String signatureType,
+  //   String? imageUrl,
+  //   String? typedName,
+  // });
 
   /// POST appointment or POST appointment/checkin.
   /// Returns the appointmentId from the response.

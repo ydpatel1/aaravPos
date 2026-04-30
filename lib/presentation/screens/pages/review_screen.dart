@@ -71,13 +71,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
       // Extract phone number without country code
       String phone = customer.phone;
       if (phone.startsWith('+')) {
-        // Remove + and country code
         phone = phone.substring(1);
-        // Try to match country code
         for (var i = 1; i <= 4; i++) {
           if (phone.length > i) {
             final code = phone.substring(0, i);
-            // Check if this matches selected country
             if (code == _selectedCountry.phoneCode) {
               phone = phone.substring(i);
               break;
@@ -87,9 +84,19 @@ class _ReviewScreenState extends State<ReviewScreen> {
       }
       _phoneController.text = phone;
     });
+
     context.read<SessionBloc>().setCustomer(
       customer.fullName,
       customerId: customer.id,
+    );
+
+    // Trigger consent check immediately when customer is selected (per spec §5.2)
+    // ConsentBloc will call GET concent/check for ONCE_PER_CUSTOMER services
+    context.read<ConsentBloc>().add(
+      ConsentCheckRequested(
+        customerId: customer.id,
+        services: context.read<SessionBloc>().state.selectedServices,
+      ),
     );
   }
 
@@ -261,14 +268,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
       ),
       bottomNavigationBar: BlocConsumer<ConsentBloc, ConsentState>(
         listener: (context, consentState) {
+          // Only auto-open dialog when consent check fires after customer selection
           if (consentState.status == ConsentStatus.needsSign) {
             _openConsentDialog(context);
-          } else if (consentState.status == ConsentStatus.skipped) {
-            // No consent needed → book directly, no consent fields
-            _submitBooking(context);
-          } else if (consentState.status == ConsentStatus.signed) {
-            // Consent dialog completed → book + attach consent
-            _submitBookingWithConsent(context);
           } else if (consentState.status == ConsentStatus.error) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -319,17 +321,32 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 total: 'Total: ${session.formattedTotal}',
                 subtitle: '${session.selectedServices.length} Service Selected',
                 secondaryLabel: 'Cancel',
-                onSecondary: () => context.go(
-                  AppRoutes.home,
-                ), // clears stack back to home (spec §6)
+                onSecondary: () => context.pop(),
                 primaryLabel: buttonLabel,
                 primaryEnabled: hasCustomer && !isLoading,
                 onPrimary: isLoading
                     ? null
                     : () {
-                        // Validate form first (spec §7)
+                        // If consent check already determined needsSign → open dialog
+                        if (consentState.status == ConsentStatus.needsSign) {
+                          if (!_validateForm()) return;
+                          _openConsentDialog(context);
+                          return;
+                        }
+                        // If consent already signed → submit with consent data
+                        if (consentState.status == ConsentStatus.signed) {
+                          if (!_validateForm()) return;
+                          _submitBookingWithConsent(context);
+                          return;
+                        }
+                        // If consent was checked and skipped (not needed) → submit directly
+                        if (consentState.status == ConsentStatus.skipped) {
+                          if (!_validateForm()) return;
+                          _submitBooking(context);
+                          return;
+                        }
+                        // Consent check not yet run → run check now
                         if (!_validateForm()) return;
-                        FocusScope.of(context).unfocus();
                         final customerId = session.selectedCustomerId ?? '';
                         context.read<ConsentBloc>().add(
                           ConsentCheckRequested(
