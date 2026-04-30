@@ -308,7 +308,8 @@ class BookingRemoteDataSource {
     }
   }
 
-  /// GET consent/check/{customerId}/{consentFormId}?serviceId={serviceId}
+  /// GET concent/check/{customerId}/{consentFormId}?serviceId={serviceId}
+  /// Note: API uses "concent" (typo in their API — must match exactly)
   Future<Map<String, dynamic>> checkConsentStatus({
     required String customerId,
     required String consentFormId,
@@ -316,7 +317,7 @@ class BookingRemoteDataSource {
   }) async {
     try {
       final response = await _apiService.get(
-        'consent/check/$customerId/$consentFormId',
+        'concent/check/$customerId/$consentFormId',
         queryParameters: <String, dynamic>{'serviceId': serviceId},
       );
       final body = response.data;
@@ -368,10 +369,9 @@ class BookingRemoteDataSource {
   }
 
   /// POST appointment — book a future appointment
-  /// Payload matches API 9 exactly.
-  Future<String> submitAppointment({
+  /// Payload matches spec §8 exactly.
+  Future<Map<String, dynamic>> submitAppointment({
     required bool isCheckIn,
-    required String customerId,
     required String staffId,
     required String outletId,
     required String tenantId,
@@ -383,17 +383,20 @@ class BookingRemoteDataSource {
     required String lastName,
     required String email,
     required String phone,
+    bool requiresConsent = false,
   }) async {
     try {
       final endpoint = isCheckIn ? 'appointment/checkin' : 'appointment';
 
+      // Check-in payload (spec §8.1) — no gender/date_of_birth
+      // Appointment payload (spec §8.2) — includes gender/date_of_birth
       final customerPayload = <String, dynamic>{
         'first_name': firstName.trim(),
         'last_name': lastName.trim(),
-        'email': email,
+        'email': email.isNotEmpty ? email : null,
         'phone': phone, // full phone e.g. "+1XXXXXXXXXX"
-        'gender': '',
-        'date_of_birth': '',
+        if (!isCheckIn) 'gender': '',
+        if (!isCheckIn) 'date_of_birth': '',
       };
 
       final payload = <String, dynamic>{
@@ -405,8 +408,9 @@ class BookingRemoteDataSource {
         'date': date,
         'startTime': startTime,
         'customer': customerPayload,
-        'requiresConsent': false,
         if (!isCheckIn) 'isWalkIn': false,
+        // Spec §8.2: only add requiresConsent when enforcementMode == 'FIXED'
+        if (requiresConsent) 'requiresConsent': true,
       };
 
       final response = await _apiService.post(endpoint, data: payload);
@@ -416,17 +420,31 @@ class BookingRemoteDataSource {
           throw Exception(body['message'] as String? ?? 'Booking failed');
         }
         final data = body['data'] as Map<String, dynamic>?;
-        return data?['id'] as String? ??
+        final appointmentId =
+            data?['id'] as String? ??
+            data?['appointmentId'] as String? ??
             body['id'] as String? ??
             'BK-${DateTime.now().millisecondsSinceEpoch}';
+        final customerId =
+            data?['customerId'] as String? ?? '';
+        return {
+          'appointmentId': appointmentId,
+          'customerId': customerId,
+          'apiResponse': body,
+        };
       }
-      return 'BK-${DateTime.now().millisecondsSinceEpoch}';
+      return {
+        'appointmentId': 'BK-${DateTime.now().millisecondsSinceEpoch}',
+        'customerId': '',
+        'apiResponse': body,
+      };
     } catch (e) {
       throw Exception('Failed to submit booking: ${e.toString()}');
     }
   }
 
-  /// POST consent/customer-sign — API 8
+  /// POST concent/customer-sign — API #5
+  /// Note: API uses "concent" (typo in their API — must match exactly).
   /// Called AFTER booking to attach the signed consent to the appointment.
   Future<void> signConsentWithAppointment({
     required String tenantId,
@@ -448,8 +466,7 @@ class BookingRemoteDataSource {
         'customerId': customerId,
         'serviceIds': serviceIds,
         'outletId': outletId,
-        'concentFormId':
-            consentFormId, // note: API uses "concentFormId" (typo in their API)
+        'concentFormId': consentFormId, // API uses "concentFormId" (typo in their API)
         'signatureType': signatureType,
         'channel': 'POS',
         'staffId': staffId,
@@ -461,7 +478,7 @@ class BookingRemoteDataSource {
       };
 
       final response = await _apiService.post(
-        'consent/customer-sign',
+        'concent/customer-sign',
         data: payload,
       );
       final body = response.data;

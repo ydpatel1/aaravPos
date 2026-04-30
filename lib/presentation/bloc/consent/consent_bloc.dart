@@ -1,5 +1,6 @@
-import 'package:aaravpos/core/storage/secure_storage.dart';
+import 'package:aaravpos/domain/model/consent_check_result.dart';
 import 'package:aaravpos/domain/model/service_item.dart';
+import 'package:aaravpos/domain/model/signed_consent_data.dart';
 import 'package:aaravpos/domain/repo/booking_repository.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
@@ -9,9 +10,9 @@ part 'consent_event.dart';
 part 'consent_state.dart';
 
 class ConsentBloc extends Bloc<ConsentEvent, ConsentState> {
-  ConsentBloc(this._repository, SecureStorage _) : super(const ConsentState()) {
+  ConsentBloc(this._repository) : super(const ConsentState()) {
     on<ConsentCheckRequested>(_onCheckRequested);
-    on<ConsentSignRequested>(_onSignRequested);
+    on<ConsentSigned>(_onConsentSigned);
     on<ConsentReset>(_onReset);
   }
 
@@ -23,137 +24,168 @@ class ConsentBloc extends Bloc<ConsentEvent, ConsentState> {
   ) async {
     emit(state.copyWith(status: ConsentStatus.checking, errorMessage: null));
 
-    try {
-      // Find services that require consent (consentFormId may be null — still check)
-      final consentServices = event.services
-          .where((s) => s.consentRequired)
-          .toList();
+    // Filter services that qualify for consent per spec §5.1:
+    // requiresConsent == true AND consentFormId != null AND consentRule != null
+    final consentServices = event.services
+        .where((s) => s.needsConsentDialog)
+        .toList();
 
-      if (consentServices.isEmpty) {
-        debugPrint('✅ ConsentBloc: No services require consent → skipping');
-        emit(state.copyWith(status: ConsentStatus.skipped));
-        return;
-      }
+    if (consentServices.isEmpty) {
+      debugPrint('✅ ConsentBloc: No services require consent → skipping');
+      emit(state.copyWith(status: ConsentStatus.skipped));
+      return;
+    }
 
-      // Use first service that has a consentFormId, or fall back to first consent service
-      final primary = consentServices.firstWhere(
-        (s) => s.consentFormId != null && s.consentFormId!.isNotEmpty,
-        orElse: () => consentServices.first,
-      );
+    if (event.isNewCustomer) {
+      // New / unregistered customer — evaluate locally (spec §5.2.C)
+      _evaluateConsentForNewCustomer(consentServices, emit);
+      return;
+    }
 
-      if (primary.consentFormId == null || primary.consentFormId!.isEmpty) {
-        // consentRequired=true but no consentFormId from service list API.
-        // Try calling the check API with just the serviceId — the server resolves the form.
+    // Existing customer — process each service
+    final results = <ConsentCheckResult>[];
+
+    for (final service in consentServices) {
+      final rule = service.consentRule!;
+      final freq = rule.signingFrequency;
+
+      if (freq == 'EVERY_VISIT') {
+        // Spec §5.2.A: EVERY_VISIT + MULTIPLE + KIOSK → no API call, always sign
         debugPrint(
-          '⚠️ ConsentBloc: consentRequired but no consentFormId — calling check API with serviceId only',
+          '📋 ConsentBloc: EVERY_VISIT service ${service.id} → needsSignature=true (no API)',
         );
+        results.add(
+          ConsentCheckResult(
+            serviceId: service.id,
+            needsSignature: true, // already signed (optional re-sign per spec)
+            signingFrequency: freq,
+            consentFormId: service.consentFormId!,
+            consentHeading: '',
+            consentText: '',
+            signatureType: rule.kioskMethod ?? 'CHECKBOX_ONLY',
+          ),
+        );
+      } else {
+        // ONCE_PER_CUSTOMER → call API (spec §5.2.B)
         try {
+          debugPrint(
+            '🔍 ConsentBloc: Checking ONCE_PER_CUSTOMER consent for service ${service.id}',
+          );
           final result = await _repository.checkConsentStatus(
             customerId: event.customerId,
-            consentFormId: primary.id, // use serviceId as fallback key
-            serviceId: primary.id,
+            consentFormId: service.consentFormId!,
+            serviceId: service.id,
           );
-          debugPrint(
-            '📋 ConsentBloc (fallback): needsSignature=${result.needsSignature}, freq=${result.signingFrequency}',
-          );
-          if (!result.requiresDialog) {
-            emit(state.copyWith(status: ConsentStatus.skipped));
-            return;
-          }
-          emit(
-            state.copyWith(
-              status: ConsentStatus.needsSign,
-              consentHeading: result.consentHeading,
-              consentText: result.consentText.isNotEmpty
-                  ? result.consentText
-                  : 'Please confirm your consent to proceed with this service.',
+          // Attach serviceId since the API response doesn't include it
+          results.add(
+            ConsentCheckResult(
+              serviceId: service.id,
+              needsSignature: result.needsSignature,
+              signingFrequency: result.signingFrequency.isNotEmpty
+                  ? result.signingFrequency
+                  : freq,
               consentFormId: result.consentFormId.isNotEmpty
                   ? result.consentFormId
-                  : primary.id,
-              signatureType: result.signatureType,
-              pendingServiceIds: consentServices.map((s) => s.id).toList(),
+                  : service.consentFormId!,
+              consentHeading: result.consentHeading,
+              consentText: result.consentText,
+              signatureType: result.signatureType.isNotEmpty
+                  ? result.signatureType
+                  : (rule.kioskMethod ?? 'CHECKBOX_ONLY'),
+              hasPreviousSignature: result.hasPreviousSignature,
+              signatureExists: result.signatureExists,
+              consentInstanceExists: result.consentInstanceExists,
             ),
           );
-        } catch (_) {
-          // API failed — show generic checkbox consent as last resort
           debugPrint(
-            '⚠️ ConsentBloc: check API failed, showing generic checkbox dialog',
+            '📋 ConsentBloc: service ${service.id} needsSignature=${result.needsSignature}',
           );
-          emit(
-            state.copyWith(
-              status: ConsentStatus.needsSign,
+        } catch (e) {
+          // API error → safe fallback: treat as must-sign (needsSignature=false)
+          debugPrint(
+            '⚠️ ConsentBloc: consent check failed for ${service.id}, defaulting to must-sign: $e',
+          );
+          results.add(
+            ConsentCheckResult(
+              serviceId: service.id,
+              needsSignature: false, // safe fallback → must sign
+              signingFrequency: freq,
+              consentFormId: service.consentFormId!,
               consentHeading: '',
-              consentText:
-                  'Please confirm your consent to proceed with this service.',
-              consentFormId: '',
-              signatureType: 'CHECKBOX_ONLY',
-              pendingServiceIds: consentServices.map((s) => s.id).toList(),
+              consentText: '',
+              signatureType: rule.kioskMethod ?? 'CHECKBOX_ONLY',
             ),
           );
         }
-        return;
       }
+    }
 
-      debugPrint(
-        '🔍 ConsentBloc: Checking consent for service ${primary.id}, form ${primary.consentFormId}',
-      );
-      final result = await _repository.checkConsentStatus(
-        customerId: event.customerId,
-        consentFormId: primary.consentFormId!,
-        serviceId: primary.id,
-      );
+    final newState = state.copyWith(
+      status: ConsentStatus.needsSign,
+      consentResults: results,
+      signedConsents: const [],
+    );
 
-      debugPrint(
-        '📋 ConsentBloc: needsSignature=${result.needsSignature}, signingFrequency=${result.signingFrequency}',
-      );
-
-      if (!result.requiresDialog) {
-        // ONCE_PER_CUSTOMER and already signed → skip
-        debugPrint(
-          '✅ ConsentBloc: Already signed (ONCE_PER_CUSTOMER) → skipping',
-        );
-        emit(state.copyWith(status: ConsentStatus.skipped));
-        return;
-      }
-
-      debugPrint('📝 ConsentBloc: Consent required → showing dialog');
-      emit(
-        state.copyWith(
-          status: ConsentStatus.needsSign,
-          consentHeading: result.consentHeading,
-          consentText: result.consentText,
-          consentFormId: result.consentFormId.isNotEmpty
-              ? result.consentFormId
-              : primary.consentFormId!,
-          signatureType: result.signatureType,
-          pendingServiceIds: consentServices.map((s) => s.id).toList(),
-        ),
-      );
-    } catch (e) {
-      debugPrint('❌ ConsentBloc: Error checking consent: $e');
-      emit(
-        state.copyWith(
-          status: ConsentStatus.error,
-          errorMessage: e.toString().replaceFirst('Exception: ', ''),
-        ),
-      );
+    if (!newState.showSignConsentButton) {
+      // All consents are already signed (ONCE_PER_CUSTOMER, needsSignature=true)
+      debugPrint('✅ ConsentBloc: All consents already signed → skipping');
+      emit(state.copyWith(status: ConsentStatus.skipped, consentResults: results));
+    } else {
+      emit(newState);
     }
   }
 
-  Future<void> _onSignRequested(
-    ConsentSignRequested event,
+  /// Spec §5.2.C — new/unregistered customer, no API call possible.
+  void _evaluateConsentForNewCustomer(
+    List<ServiceItem> consentServices,
     Emitter<ConsentState> emit,
-  ) async {
-    // Store the signed data in state — actual POST consent/customer-sign
-    // is called by BookingBloc AFTER the appointment is created (needs appointmentId).
-    emit(
-      state.copyWith(
-        status: ConsentStatus.signed,
-        signedImageUrl: event.imageUrl,
-        signedTypedName: event.typedName,
-        isChecked: event.isChecked,
-      ),
+  ) {
+    final results = <ConsentCheckResult>[];
+
+    for (final service in consentServices) {
+      final rule = service.consentRule!;
+      final freq = rule.signingFrequency;
+      final method = rule.kioskMethod ?? 'CHECKBOX_ONLY';
+
+      // Both EVERY_VISIT and ONCE_PER_CUSTOMER → needsSignature = true, isNewCustomerEntry = true
+      debugPrint(
+        '📋 ConsentBloc: New customer, service ${service.id}, freq=$freq → needsSignature=true',
+      );
+      results.add(
+        ConsentCheckResult.forNewCustomer(
+          serviceId: service.id,
+          consentFormId: service.consentFormId!,
+          signingFrequency: freq,
+          signatureType: method,
+        ),
+      );
+    }
+
+    emit(state.copyWith(
+      status: ConsentStatus.needsSign,
+      consentResults: results,
+      signedConsents: const [],
+    ));
+  }
+
+  void _onConsentSigned(
+    ConsentSigned event,
+    Emitter<ConsentState> emit,
+  ) {
+    final updated = List<SignedConsentData>.from(state.signedConsents)
+      ..removeWhere((s) => s.serviceId == event.data.serviceId)
+      ..add(event.data);
+
+    final newState = state.copyWith(
+      signedConsents: updated,
     );
+
+    // If no more consents to sign → transition to signed
+    if (!newState.showSignConsentButton) {
+      emit(newState.copyWith(status: ConsentStatus.signed));
+    } else {
+      emit(newState);
+    }
   }
 
   void _onReset(ConsentReset event, Emitter<ConsentState> emit) {

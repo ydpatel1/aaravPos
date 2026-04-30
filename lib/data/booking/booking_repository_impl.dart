@@ -1,10 +1,11 @@
 import 'package:aaravpos/core/storage/secure_storage.dart';
 import 'package:aaravpos/domain/model/consent_check_result.dart';
 import 'package:aaravpos/domain/model/customer.dart';
-import 'package:aaravpos/domain/repo/booking_repository.dart';
 import 'package:aaravpos/domain/model/service_item.dart';
+import 'package:aaravpos/domain/model/signed_consent_data.dart';
 import 'package:aaravpos/domain/model/slot_item.dart';
 import 'package:aaravpos/domain/model/staff_member.dart';
+import 'package:aaravpos/domain/repo/booking_repository.dart';
 import 'package:aaravpos/presentation/bloc/session/session_bloc.dart';
 
 import 'booking_remote_data_source.dart';
@@ -61,49 +62,23 @@ class BookingRepositoryImpl implements BookingRepository {
       consentFormId: consentFormId,
       serviceId: serviceId,
     );
-    return ConsentCheckResult.fromJson(raw);
+    return ConsentCheckResult.fromJson(raw, serviceId: serviceId);
   }
 
   @override
-  Future<void> signConsent({
-    required String customerId,
-    required String consentFormId,
-    required List<String> serviceIds,
-    required String staffId,
-    required String outletId,
-    required String tenantId,
-    required String signatureType,
-    String? imageUrl,
-    String? typedName,
-  }) async {
-    return _remoteDataSource.signConsent(
-      customerId: customerId,
-      consentFormId: consentFormId,
-      serviceIds: serviceIds,
-      staffId: staffId,
-      outletId: outletId,
-      tenantId: tenantId,
-      signatureType: signatureType,
-      imageUrl: imageUrl,
-      typedName: typedName,
-    );
-  }
-
-  @override
-  Future<String> submitBooking({
+  Future<Map<String, dynamic>> submitBooking({
     required SessionState session,
     required String firstName,
     required String lastName,
     required String email,
     required String phone,
+    List<SignedConsentData> signedConsents = const [],
   }) async {
     final outletId = await _secureStorage.getOutletId() ?? '';
     final tenantId = await _secureStorage.getTenantId() ?? '';
 
     final staffId = session.selectedStaff?.id ?? '';
-    final customerId = session.selectedCustomerId ?? '';
     final serviceIds = session.selectedServices.map((s) => s.id).toList();
-    // API uses slotIds (list), not slotId
     final slotIds = session.selectedSlot != null
         ? [session.selectedSlot!.id]
         : <String>[];
@@ -116,9 +91,13 @@ class BookingRepositoryImpl implements BookingRepository {
               '${session.selectedDate!.day.toString().padLeft(2, '0')}'
         : '';
 
+    // Spec §8.2: add requiresConsent=true only when any service has enforcementMode == 'FIXED'
+    final requiresConsent = session.selectedServices.any(
+      (s) => s.consentRule?.enforcementMode == 'FIXED',
+    );
+
     return _remoteDataSource.submitAppointment(
       isCheckIn: isCheckIn,
-      customerId: customerId,
       staffId: staffId,
       outletId: outletId,
       tenantId: tenantId,
@@ -130,6 +109,7 @@ class BookingRepositoryImpl implements BookingRepository {
       lastName: lastName,
       email: email,
       phone: phone,
+      requiresConsent: requiresConsent,
     );
   }
 

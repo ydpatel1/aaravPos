@@ -14,6 +14,7 @@ class CustomerBloc extends Bloc<CustomerEvent, CustomerState> {
   CustomerBloc(this._repository) : super(const CustomerState()) {
     on<CustomerSearchRequested>(_onSearchRequested);
     on<CustomerSearchDebounced>(_onSearchDebounced);
+    on<CustomerSearchCleared>(_onSearchCleared);
   }
 
   final BookingRepository _repository;
@@ -33,18 +34,43 @@ class CustomerBloc extends Bloc<CustomerEvent, CustomerState> {
     CustomerSearchDebounced event,
     Emitter<CustomerState> emit,
   ) async {
-    emit(state.copyWith(isLoading: true, errorMessage: null));
+    emit(state.copyWith(isLoading: true, errorMessage: null, isCustomerNotFound: false));
     try {
       final results = await _repository.searchCustomers(event.query);
-      emit(state.copyWith(isLoading: false, results: results));
+      if (results.isEmpty) {
+        // API succeeded but no customers found → spec §4: isCustomerNotFound = true
+        emit(state.copyWith(
+          isLoading: false,
+          results: const [],
+          isCustomerNotFound: true,
+        ));
+      } else {
+        emit(state.copyWith(
+          isLoading: false,
+          results: results,
+          isCustomerNotFound: false,
+        ));
+      }
     } catch (_) {
-      emit(
-        state.copyWith(isLoading: false, errorMessage: 'Customer not found'),
-      );
+      // Error / exception → spec §4: clear dropdown, isCustomerNotFound = false
+      emit(state.copyWith(
+        isLoading: false,
+        results: const [],
+        isCustomerNotFound: false,
+        errorMessage: 'Customer search failed',
+      ));
     }
   }
 
+  void _onSearchCleared(
+    CustomerSearchCleared event,
+    Emitter<CustomerState> emit,
+  ) {
+    emit(const CustomerState());
+  }
+
   void search(String query) => add(CustomerSearchRequested(query));
+  void clear() => add(const CustomerSearchCleared());
 
   @override
   Future<void> close() {

@@ -24,3 +24,8 @@ class CustomerSearchDebounced extends CustomerEvent {
   @override
   List<Object?> get props => [query];
 }
+
+/// Clears the customer search results and resets isCustomerNotFound.
+class CustomerSearchCleared extends CustomerEvent {
+  const CustomerSearchCleared();
+}
