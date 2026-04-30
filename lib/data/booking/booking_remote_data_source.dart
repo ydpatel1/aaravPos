@@ -272,7 +272,7 @@ class BookingRemoteDataSource {
         queryParameters: <String, dynamic>{
           'page': 1,
           'limit': 20,
-          'search': Uri.encodeComponent(phoneNumber),
+          'search': phoneNumber, // Dio encodes this automatically — do NOT pre-encode
         },
       );
 

@@ -1,5 +1,3 @@
-import 'dart:convert' show base64Encode;
-
 import 'package:aaravpos/core/utils/extensions/space_extension.dart';
 import 'package:aaravpos/domain/model/customer.dart';
 import 'package:aaravpos/presentation/bloc/booking/booking_bloc.dart';
@@ -11,13 +9,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:signature/signature.dart';
 
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/utils/extensions/context_extension.dart';
 import '../../../../shared/widgets/common_app_bar.dart';
 import '../../../../shared/widgets/kiosk_bottom_bar.dart';
 import '../../../../shared/widgets/platform_glass_card.dart';
+import '../widgets/consent_dialog.dart';
 
 class ReviewScreen extends StatefulWidget {
   const ReviewScreen({super.key});
@@ -32,7 +30,6 @@ class _ReviewScreenState extends State<ReviewScreen> {
   final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
 
-  Customer? _selectedCustomer;
   bool _showSuggestions = false;
   bool _autoValidate = false;
   String? _phoneError;
@@ -61,27 +58,39 @@ class _ReviewScreenState extends State<ReviewScreen> {
   }
 
   void _onCustomerSelected(Customer customer) {
+    // Parse country code from customer phone, update dropdown, show digits only
+    String phone = customer.phone;
+    Country newCountry = _selectedCountry;
+
+    if (phone.startsWith('+')) {
+      final withoutPlus = phone.substring(1);
+      bool found = false;
+      // Try longest match first (4 → 1 digits)
+      for (var len = 4; len >= 1; len--) {
+        if (withoutPlus.length > len) {
+          final candidate = withoutPlus.substring(0, len);
+          try {
+            final matched = CountryParser.parsePhoneCode(candidate);
+            newCountry = matched;
+            phone = withoutPlus.substring(len);
+            found = true;
+            break;
+          } catch (_) {
+            // try shorter
+          }
+        }
+      }
+      if (!found) {
+        phone = withoutPlus;
+      }
+    }
+
     setState(() {
-      _selectedCustomer = customer;
+      _selectedCountry = newCountry;
       _showSuggestions = false;
       _firstNameController.text = customer.firstName;
       _lastNameController.text = customer.lastName;
       _emailController.text = customer.email ?? '';
-
-      // Extract phone number without country code
-      String phone = customer.phone;
-      if (phone.startsWith('+')) {
-        phone = phone.substring(1);
-        for (var i = 1; i <= 4; i++) {
-          if (phone.length > i) {
-            final code = phone.substring(0, i);
-            if (code == _selectedCountry.phoneCode) {
-              phone = phone.substring(i);
-              break;
-            }
-          }
-        }
-      }
       _phoneController.text = phone;
     });
 
@@ -90,41 +99,43 @@ class _ReviewScreenState extends State<ReviewScreen> {
       customerId: customer.id,
     );
 
-    // Trigger consent check immediately when customer is selected (per spec §5.2)
-    // ConsentBloc will call GET concent/check for ONCE_PER_CUSTOMER services
+    // Run consent check immediately on customer selection
     context.read<ConsentBloc>().add(
       ConsentCheckRequested(
         customerId: customer.id,
         services: context.read<SessionBloc>().state.selectedServices,
+        isNewCustomer: false,
       ),
     );
   }
 
   void _onPhoneChanged(String value) {
-    // Show suggestions dropdown from 3+ digits (UX auto-fill)
-    // Trigger the actual API search at 8–9 digits (spec §4)
-    final showDropdown = value.length >= 3;
+    // Any phone edit invalidates a previously selected customer
+    final hadCustomer =
+        context.read<SessionBloc>().state.selectedCustomerId != null;
+    if (hadCustomer) {
+      _clearCustomerSelection();
+    }
+
     setState(() {
-      _showSuggestions = showDropdown;
+      _showSuggestions = value.length >= 3;
       if (_autoValidate) _phoneError = _validatePhone(value);
     });
 
-    if (value.length == 8 || value.length == 9) {
-      // Full search with countryCode+phone as the search param (spec §4 API)
+    if (value.length >= 3) {
+      // Build full phone with country code: "+91" + "9106..." → "+919106..."
+      // The data source will Uri.encodeComponent this before sending.
       final searchQuery = '+${_selectedCountry.phoneCode}$value';
       context.read<CustomerBloc>().search(searchQuery);
-    } else if (value.length >= 3) {
-      // Lightweight search for suggestions using phone digits only
-      context.read<CustomerBloc>().search(value);
     } else {
-      // Below 3 digits — clear everything
-      _clearCustomerSelection();
+      // Below 3 digits — cancel any pending debounce and clear results
+      context.read<CustomerBloc>().search('');
+      setState(() => _showSuggestions = false);
     }
   }
 
   void _clearCustomerSelection() {
     setState(() {
-      _selectedCustomer = null;
       _showSuggestions = false;
     });
     context.read<SessionBloc>().setCustomer('', customerId: null);
@@ -135,9 +146,6 @@ class _ReviewScreenState extends State<ReviewScreen> {
   String? _validatePhone(String value) {
     final email = _emailController.text.trim();
     if (value.isEmpty && email.isEmpty) return 'Phone or email is required';
-    if (value.isNotEmpty && value.length != 10) {
-      return 'Phone must be exactly 10 digits';
-    }
     return null;
   }
 
@@ -181,12 +189,13 @@ class _ReviewScreenState extends State<ReviewScreen> {
           BlocProvider.value(value: ctx.read<ConsentBloc>()),
           BlocProvider.value(value: ctx.read<BookingBloc>()),
         ],
-        child: const _ConsentDialog(),
+        child: const ConsentDialog(),
       ),
     );
   }
 
   void _submitBooking(BuildContext ctx) {
+    final signedConsents = ctx.read<ConsentBloc>().state.signedConsents;
     ctx.read<BookingBloc>().add(
       BookingSubmitted(
         session: ctx.read<SessionBloc>().state,
@@ -194,24 +203,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
         lastName: _lastNameController.text.trim(),
         email: _emailController.text.trim(),
         phone: '+${_selectedCountry.phoneCode}${_phoneController.text.trim()}',
-      ),
-    );
-  }
-
-  void _submitBookingWithConsent(BuildContext ctx) {
-    final consentState = ctx.read<ConsentBloc>().state;
-    ctx.read<BookingBloc>().add(
-      BookingSubmitted(
-        session: ctx.read<SessionBloc>().state,
-        firstName: _firstNameController.text.trim(),
-        lastName: _lastNameController.text.trim(),
-        email: _emailController.text.trim(),
-        phone: '+${_selectedCountry.phoneCode}${_phoneController.text.trim()}',
-        consentFormId: consentState.consentFormId,
-        signatureType: consentState.signatureType,
-        imageUrl: consentState.signedImageUrl,
-        typedName: consentState.signedTypedName,
-        isChecked: consentState.isChecked,
+        signedConsents: signedConsents,
       ),
     );
   }
@@ -268,10 +260,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
       ),
       bottomNavigationBar: BlocConsumer<ConsentBloc, ConsentState>(
         listener: (context, consentState) {
-          // Only auto-open dialog when consent check fires after customer selection
-          if (consentState.status == ConsentStatus.needsSign) {
-            _openConsentDialog(context);
-          } else if (consentState.status == ConsentStatus.error) {
+          // Do NOT auto-submit on signed — user must tap Continue themselves.
+          // signed just means button changes back to "Continue".
+          if (consentState.status == ConsentStatus.error) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
@@ -284,13 +275,6 @@ class _ReviewScreenState extends State<ReviewScreen> {
         },
         builder: (context, consentState) {
           final isChecking = consentState.status == ConsentStatus.checking;
-          final hasCustomer =
-              _selectedCustomer != null ||
-              (_firstNameController.text.isNotEmpty &&
-                  _phoneController.text.isNotEmpty);
-          final needsConsent = session.selectedServices.any(
-            (s) => s.consentRequired,
-          );
 
           return BlocConsumer<BookingBloc, BookingState>(
             listener: (context, bookingState) {
@@ -311,50 +295,38 @@ class _ReviewScreenState extends State<ReviewScreen> {
             builder: (context, bookingState) {
               final isLoading =
                   isChecking || bookingState.status == BookingStatus.loading;
-              final buttonLabel = isLoading
-                  ? 'Please wait...'
-                  : needsConsent
-                  ? 'Sign Consent'
-                  : 'Continue';
+
+              // showSignConsentButton = consent check ran and found services needing sign
+              final showSignConsent = consentState.showSignConsentButton;
+
+              String primaryLabel;
+              if (isLoading) {
+                primaryLabel = 'Please wait...';
+              } else if (showSignConsent) {
+                primaryLabel = 'Sign Consent';
+              } else {
+                primaryLabel = 'Continue';
+              }
 
               return KioskBottomBar(
                 total: 'Total: ${session.formattedTotal}',
-                subtitle: '${session.selectedServices.length} Service Selected',
+                subtitle:
+                    '${session.selectedServices.length} Service Selected',
                 secondaryLabel: 'Cancel',
                 onSecondary: () => context.pop(),
-                primaryLabel: buttonLabel,
-                primaryEnabled: hasCustomer && !isLoading,
+                primaryLabel: primaryLabel,
+                primaryEnabled: !isLoading,
                 onPrimary: isLoading
                     ? null
-                    : () {
-                        // If consent check already determined needsSign → open dialog
-                        if (consentState.status == ConsentStatus.needsSign) {
-                          if (!_validateForm()) return;
-                          _openConsentDialog(context);
-                          return;
-                        }
-                        // If consent already signed → submit with consent data
-                        if (consentState.status == ConsentStatus.signed) {
-                          if (!_validateForm()) return;
-                          _submitBookingWithConsent(context);
-                          return;
-                        }
-                        // If consent was checked and skipped (not needed) → submit directly
-                        if (consentState.status == ConsentStatus.skipped) {
-                          if (!_validateForm()) return;
-                          _submitBooking(context);
-                          return;
-                        }
-                        // Consent check not yet run → run check now
-                        if (!_validateForm()) return;
-                        final customerId = session.selectedCustomerId ?? '';
-                        context.read<ConsentBloc>().add(
-                          ConsentCheckRequested(
-                            customerId: customerId,
-                            services: session.selectedServices,
-                          ),
-                        );
-                      },
+                    : showSignConsent
+                        // ── "Sign Consent" tapped → open dialog ──────────
+                        ? () => _openConsentDialog(context)
+                        // ── "Continue" tapped → validate + submit ─────────
+                        : () {
+                            if (!_validateForm()) return;
+                            FocusScope.of(context).unfocus();
+                            _submitBooking(context);
+                          },
               );
             },
           );
@@ -362,7 +334,21 @@ class _ReviewScreenState extends State<ReviewScreen> {
       ),
       body: Padding(
         padding: EdgeInsets.all(isMobile ? 16 : 20),
-        child: BlocBuilder<CustomerBloc, CustomerState>(
+        child: BlocListener<CustomerBloc, CustomerState>(
+          // Fix #1 (new customer): when search returns no results, run consent check
+          listenWhen: (prev, curr) =>
+              prev.isCustomerNotFound != curr.isCustomerNotFound &&
+              curr.isCustomerNotFound,
+          listener: (ctx, _) {
+            ctx.read<ConsentBloc>().add(
+              ConsentCheckRequested(
+                customerId: '',
+                services: ctx.read<SessionBloc>().state.selectedServices,
+                isNewCustomer: true,
+              ),
+            );
+          },
+          child: BlocBuilder<CustomerBloc, CustomerState>(
           builder: (context, customerState) {
             final leftPanel = PlatformGlassCard(
               radius: 24,
@@ -807,405 +793,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
             );
           },
         ),
+        ), // closes BlocListener
       ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Consent Dialog — shown inline from ReviewScreen via showDialog
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ConsentDialog extends StatefulWidget {
-  const _ConsentDialog();
-
-  @override
-  State<_ConsentDialog> createState() => _ConsentDialogState();
-}
-
-class _ConsentDialogState extends State<_ConsentDialog> {
-  final SignatureController _sigController = SignatureController(
-    penStrokeWidth: 3,
-    penColor: Colors.black,
-    exportBackgroundColor: Colors.white,
-  );
-  final TextEditingController _typedNameController = TextEditingController();
-
-  bool _emailMe = false;
-  bool _checkboxAgreed = false;
-  bool _hasSignature = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _sigController.addListener(() {
-      final has = _sigController.isNotEmpty;
-      if (has != _hasSignature) setState(() => _hasSignature = has);
-    });
-  }
-
-  @override
-  void dispose() {
-    _sigController.dispose();
-    _typedNameController.dispose();
-    super.dispose();
-  }
-
-  bool get _canConfirm {
-    final type = context.read<ConsentBloc>().state.signatureType;
-    switch (type) {
-      case 'CHECKBOX_ONLY':
-        return _checkboxAgreed;
-      case 'TYPED_NAME':
-        return _typedNameController.text.trim().isNotEmpty;
-      default:
-        return _hasSignature;
-    }
-  }
-
-  Future<void> _confirm() async {
-    final bloc = context.read<ConsentBloc>();
-    final type = bloc.state.signatureType;
-
-    if (type == 'SIGNATURE_IMAGE') {
-      final bytes = await _sigController.toPngBytes();
-      if (bytes == null || !mounted) return;
-      final b64 = 'data:image/png;base64,${base64Encode(bytes)}';
-      bloc.add(ConsentSignRequested(signatureType: type, imageUrl: b64));
-    } else if (type == 'TYPED_NAME') {
-      bloc.add(
-        ConsentSignRequested(
-          signatureType: type,
-          typedName: _typedNameController.text.trim(),
-        ),
-      );
-    } else {
-      bloc.add(
-        const ConsentSignRequested(
-          signatureType: 'CHECKBOX_ONLY',
-          isChecked: true,
-        ),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isMobile = context.isMobile;
-
-    return BlocConsumer<ConsentBloc, ConsentState>(
-      listener: (context, state) {
-        if (state.status == ConsentStatus.signed) {
-          Navigator.of(
-            context,
-          ).pop(); // close dialog — ReviewScreen listener handles booking
-        }
-      },
-      builder: (context, state) {
-        final type = state.signatureType;
-        final isSigning = state.status == ConsentStatus.signing;
-
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: EdgeInsets.symmetric(
-            horizontal: isMobile ? 12 : 40,
-            vertical: isMobile ? 24 : 40,
-          ),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: 900, // spec §10: 900×700
-              maxHeight: 700,
-            ),
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF5F5F5), // spec §10
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ── Title ────────────────────────────────────────────────
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        isMobile ? 20 : 28,
-                        isMobile ? 20 : 24,
-                        isMobile ? 20 : 28,
-                        12,
-                      ),
-                      child: Text(
-                        // spec §10: title from service.consentTemplate.heading
-                        state.consentHeading.isNotEmpty
-                            ? state.consentHeading
-                            : 'Consent Form Title',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: isMobile ? 16 : 20,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-
-                    // ── Scrollable consent text ──────────────────────────────
-                    if (state.consentText.isNotEmpty)
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: isMobile ? 16 : 24,
-                        ),
-                        child: Container(
-                          constraints: BoxConstraints(
-                            maxHeight: isMobile ? 180 : 240,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF7F7F8),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Scrollbar(
-                            thumbVisibility: true,
-                            child: SingleChildScrollView(
-                              padding: const EdgeInsets.all(14),
-                              child: Text(
-                                state.consentText,
-                                style: TextStyle(
-                                  fontSize: isMobile ? 13 : 14,
-                                  height: 1.6,
-                                  color: const Color(0xFF333333),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-
-                    // ── Signature section ────────────────────────────────────
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        isMobile ? 16 : 24,
-                        16,
-                        isMobile ? 16 : 24,
-                        0,
-                      ),
-                      child: _buildSignatureSection(type, isMobile),
-                    ),
-
-                    // ── Email me ─────────────────────────────────────────────
-                    Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isMobile ? 8 : 16,
-                      ),
-                      child: CheckboxListTile(
-                        value: _emailMe,
-                        contentPadding: EdgeInsets.zero,
-                        activeColor: const Color(0xFFE12242),
-                        dense: true,
-                        title: const Text(
-                          'Email me',
-                          style: TextStyle(fontSize: 15),
-                        ),
-                        onChanged: (v) => setState(() => _emailMe = v ?? false),
-                      ),
-                    ),
-
-                    // ── Inline error ─────────────────────────────────────────
-                    if (state.errorMessage != null)
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: isMobile ? 16 : 24,
-                        ),
-                        child: Text(
-                          state.errorMessage!,
-                          style: const TextStyle(
-                            color: Color(0xFFE12242),
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-
-                    // ── Buttons ──────────────────────────────────────────────
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        isMobile ? 16 : 24,
-                        12,
-                        isMobile ? 16 : 24,
-                        isMobile ? 20 : 24,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(
-                                  color: Color(0xFFE12242),
-                                ),
-                                foregroundColor: const Color(0xFFE12242),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(24),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 24,
-                                  vertical: 12,
-                                ),
-                              ),
-                              onPressed: isSigning
-                                  ? null
-                                  : () => Navigator.of(context).pop(),
-                              child: const Text('Cancel'),
-                            ),
-                          ),
-                          12.hs,
-                          Expanded(
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFE12242),
-                                foregroundColor: Colors.white,
-                                disabledBackgroundColor: const Color(
-                                  0xFFBDBDBD,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(24),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 28,
-                                  vertical: 12,
-                                ),
-                              ),
-                              onPressed: (_canConfirm && !isSigning)
-                                  ? _confirm
-                                  : null,
-                              child: isSigning
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : const Text('Confirm'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildSignatureSection(String type, bool isMobile) {
-    if (type == 'SIGNATURE_IMAGE') {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Sign Here',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-              ),
-              TextButton.icon(
-                onPressed: () {
-                  _sigController.clear();
-                  setState(() => _hasSignature = false);
-                },
-                icon: const Icon(Icons.refresh, size: 16),
-                label: const Text('Clear'),
-                style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFF737373),
-                ),
-              ),
-            ],
-          ),
-          6.vs,
-          Container(
-            height: isMobile ? 160 : 200,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: _hasSignature
-                    ? const Color(0xFFE12242)
-                    : const Color(0xFFD7D7DA),
-                width: _hasSignature ? 2 : 1,
-              ),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(11),
-              child: Stack(
-                children: [
-                  Signature(
-                    controller: _sigController,
-                    backgroundColor: Colors.white,
-                  ),
-                  if (!_hasSignature)
-                    const Center(
-                      child: Text(
-                        'Draw your signature here',
-                        style: TextStyle(
-                          color: Color(0xFFB0B0B0),
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    if (type == 'TYPED_NAME') {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Type Your Name', // spec §10
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-          ),
-          8.vs,
-          TextField(
-            controller: _typedNameController,
-            onChanged: (_) => setState(() {}),
-            decoration: InputDecoration(
-              hintText: 'Full name',
-              hintStyle: const TextStyle(color: Color(0xFFB0B0B0)),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: Color(0xFFE12242),
-                  width: 2,
-                ),
-              ),
-              filled: true,
-              fillColor: Colors.white,
-            ),
-          ),
-        ],
-      );
-    }
-
-    // CHECKBOX_ONLY
-    return CheckboxListTile(
-      value: _checkboxAgreed,
-      contentPadding: EdgeInsets.zero,
-      activeColor: const Color(0xFFE12242),
-      title: const Text(
-        'I have read and agree to the consent form',
-        style: TextStyle(fontSize: 15),
-      ),
-      onChanged: (v) => setState(() => _checkboxAgreed = v ?? false),
     );
   }
 }

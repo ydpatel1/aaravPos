@@ -14,12 +14,7 @@ class BookingSubmitted extends BookingEvent {
     required this.lastName,
     required this.email,
     required this.phone,
-    // Consent fields — only set when consent dialog was completed
-    this.consentFormId,
-    this.signatureType,
-    this.imageUrl,
-    this.typedName,
-    this.isChecked = false,
+    this.signedConsents = const {},
   });
 
   final dynamic session; // SessionState
@@ -27,19 +22,11 @@ class BookingSubmitted extends BookingEvent {
   final String lastName;
   final String email;
   final String phone;
-  final String? consentFormId;
-  final String? signatureType;
-  final String? imageUrl;
-  final String? typedName;
-  final bool isChecked;
+
+  /// Per-service signed data — key = serviceId.
+  /// Each entry triggers one POST concent/customer-sign after appointment is created.
+  final Map<String, SignedConsentData> signedConsents;
 
   @override
-  List<Object?> get props => [
-    firstName,
-    lastName,
-    email,
-    phone,
-    consentFormId,
-    signatureType,
-  ];
+  List<Object?> get props => [firstName, lastName, email, phone, signedConsents];
 }
