@@ -14,6 +14,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     on<SessionStaffChanged>(_onStaffChanged);
     on<SessionDateChanged>(_onDateChanged);
     on<SessionSlotChanged>(_onSlotChanged);
+    on<SessionSlotSelectionChanged>(_onSlotSelectionChanged);
     on<SessionCustomerChanged>(_onCustomerChanged);
     on<SessionResetRequested>(_onResetRequested);
     on<SessionOutletStatusLoaded>(_onOutletStatusLoaded);
@@ -53,6 +54,18 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     emit(state.copyWith(selectedSlot: event.slot));
   }
 
+  void _onSlotSelectionChanged(
+    SessionSlotSelectionChanged event,
+    Emitter<SessionState> emit,
+  ) {
+    emit(state.copyWith(
+      selectedSlot: event.startSlot,
+      selectedSlotIds: event.slotIds,
+      selectedStartTime: event.startTime,
+      selectedEndTime: event.endTime,
+    ));
+  }
+
   void _onCustomerChanged(
     SessionCustomerChanged event,
     Emitter<SessionState> emit,
@@ -87,6 +100,18 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   void setStaff(StaffMember staff) => add(SessionStaffChanged(staff));
   void setDate(DateTime date) => add(SessionDateChanged(date));
   void setSlot(SlotItem slot) => add(SessionSlotChanged(slot));
+
+  void setSlotSelection({
+    required SlotItem startSlot,
+    required List<String> slotIds,
+    required String startTime,
+    required String endTime,
+  }) => add(SessionSlotSelectionChanged(
+    startSlot: startSlot,
+    slotIds: slotIds,
+    startTime: startTime,
+    endTime: endTime,
+  ));
   void setCustomer(String customer, {String? customerId}) =>
       add(SessionCustomerChanged(customer, customerId: customerId));
   void reset() => add(const SessionResetRequested());

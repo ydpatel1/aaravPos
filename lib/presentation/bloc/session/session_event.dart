@@ -52,6 +52,24 @@ class SessionSlotChanged extends SessionEvent {
   List<Object?> get props => [slot];
 }
 
+/// Full multi-slot selection — start slot + all IDs + ISO8601 times.
+class SessionSlotSelectionChanged extends SessionEvent {
+  const SessionSlotSelectionChanged({
+    required this.startSlot,
+    required this.slotIds,
+    required this.startTime,
+    required this.endTime,
+  });
+
+  final SlotItem startSlot;
+  final List<String> slotIds;
+  final String startTime; // ISO8601
+  final String endTime;   // ISO8601
+
+  @override
+  List<Object?> get props => [startSlot, slotIds, startTime, endTime];
+}
+
 class SessionCustomerChanged extends SessionEvent {
   const SessionCustomerChanged(this.customer, {this.customerId});
 

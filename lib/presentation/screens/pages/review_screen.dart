@@ -58,30 +58,40 @@ class _ReviewScreenState extends State<ReviewScreen> {
   }
 
   void _onCustomerSelected(Customer customer) {
-    // Parse country code from customer phone, update dropdown, show digits only
+    // Extract digits only from customer.phone, update country dropdown
     String phone = customer.phone;
     Country newCountry = _selectedCountry;
 
     if (phone.startsWith('+')) {
       final withoutPlus = phone.substring(1);
-      bool found = false;
-      // Try longest match first (4 → 1 digits)
-      for (var len = 4; len >= 1; len--) {
-        if (withoutPlus.length > len) {
-          final candidate = withoutPlus.substring(0, len);
-          try {
-            final matched = CountryParser.parsePhoneCode(candidate);
-            newCountry = matched;
-            phone = withoutPlus.substring(len);
-            found = true;
-            break;
-          } catch (_) {
-            // try shorter
+
+      // 1. Try current country code first (most likely match)
+      final currentCode = _selectedCountry.phoneCode;
+      if (withoutPlus.startsWith(currentCode) &&
+          withoutPlus.length > currentCode.length) {
+        phone = withoutPlus.substring(currentCode.length);
+        // country stays the same
+      } else {
+        // 2. Try other codes longest-first
+        bool found = false;
+        for (var len = 4; len >= 1; len--) {
+          if (withoutPlus.length > len) {
+            final candidate = withoutPlus.substring(0, len);
+            try {
+              final matched = CountryParser.parsePhoneCode(candidate);
+              newCountry = matched;
+              phone = withoutPlus.substring(len);
+              found = true;
+              break;
+            } catch (_) {
+              // try shorter
+            }
           }
         }
-      }
-      if (!found) {
-        phone = withoutPlus;
+        if (!found) {
+          // Could not detect — show full number without +
+          phone = withoutPlus;
+        }
       }
     }
 
@@ -91,7 +101,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       _firstNameController.text = customer.firstName;
       _lastNameController.text = customer.lastName;
       _emailController.text = customer.email ?? '';
-      _phoneController.text = phone;
+      _phoneController.text = phone; // digits only, no country code
     });
 
     context.read<SessionBloc>().setCustomer(

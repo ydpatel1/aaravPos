@@ -103,11 +103,22 @@ class BookingRepositoryImpl implements BookingRepository {
     final staffId = session.selectedStaff?.id ?? '';
     final customerId = session.selectedCustomerId ?? '';
     final serviceIds = session.selectedServices.map((s) => s.id).toList();
-    // API uses slotIds (list), not slotId
-    final slotIds = session.selectedSlot != null
-        ? [session.selectedSlot!.id]
-        : <String>[];
-    final startTime = session.selectedSlot?.startTime ?? '';
+    // Use all selected slot IDs (multi-slot for service duration coverage)
+    final slotIds = session.selectedSlotIds.isNotEmpty
+        ? session.selectedSlotIds
+        : (session.selectedSlot != null ? [session.selectedSlot!.id] : <String>[]);
+    // Use ISO8601 start time, fall back to HH:mm from selectedSlot
+    final rawStart = session.selectedStartTime ?? session.selectedSlot?.startTime ?? '';
+    // Extract HH:mm from ISO8601 or use as-is
+    String startTime;
+    if (rawStart.contains('T')) {
+      final dt = DateTime.tryParse(rawStart);
+      startTime = dt != null
+          ? '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}'
+          : rawStart;
+    } else {
+      startTime = rawStart;
+    }
     final isCheckIn = session.mode == BookingMode.checkIn;
 
     final date = session.selectedDate != null

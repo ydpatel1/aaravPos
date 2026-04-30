@@ -1,6 +1,7 @@
 import 'package:aaravpos/presentation/bloc/session/session_bloc.dart';
 import 'package:aaravpos/presentation/bloc/slot/slot_bloc.dart';
 import 'package:aaravpos/presentation/bloc/staff/staff_bloc.dart';
+import 'package:aaravpos/domain/model/slot_item.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
@@ -87,7 +88,63 @@ class _StaffScreenState extends State<StaffScreen> {
       return;
     }
 
-    context.read<SessionBloc>().setSlot(nearest.first);
+    // Find consecutive slots needed for total service duration
+    final session = context.read<SessionBloc>().state;
+    final slotsNeeded = session.slotsNeeded;
+    final allSlots = List<SlotItem>.from(slotState.items)
+      ..sort((a, b) => a.startTime.compareTo(b.startTime));
+
+    List<SlotItem>? selectedSlots;
+    for (var i = 0; i < allSlots.length; i++) {
+      final slot = allSlots[i];
+      if (!slot.available || slot.isBooked) continue;
+      final dt = slot.toDateTime(today);
+      if (dt == null || !dt.isAfter(now)) continue;
+
+      // Try to collect slotsNeeded consecutive slots from here
+      final collected = <SlotItem>[];
+      bool canBook = true;
+      for (var j = 0; j < slotsNeeded; j++) {
+        final pos = i + j;
+        if (pos >= allSlots.length) { canBook = false; break; }
+        final s = allSlots[pos];
+        if (!s.available || s.isBooked) { canBook = false; break; }
+        if (j > 0 && allSlots[pos - 1].endTime != s.startTime) {
+          canBook = false; break;
+        }
+        collected.add(s);
+      }
+      if (canBook && collected.length == slotsNeeded) {
+        selectedSlots = collected;
+        break;
+      }
+    }
+
+    if (selectedSlots == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No available time slots for today'),
+          backgroundColor: Color(0xFFE12242),
+        ),
+      );
+      return;
+    }
+
+    final startSlot = selectedSlots.first;
+    final lastSlot = selectedSlots.last;
+    final startParts = startSlot.startTime.split(':');
+    final endParts = lastSlot.endTime.split(':');
+    final startDt = DateTime(today.year, today.month, today.day,
+        int.parse(startParts[0]), int.parse(startParts[1]));
+    final endDt = DateTime(today.year, today.month, today.day,
+        int.parse(endParts[0]), int.parse(endParts[1]));
+
+    context.read<SessionBloc>().setSlotSelection(
+      startSlot: startSlot,
+      slotIds: selectedSlots.map((s) => s.id).toList(),
+      startTime: startDt.toIso8601String(),
+      endTime: endDt.toIso8601String(),
+    );
     context.push(AppRoutes.review);
   }
 

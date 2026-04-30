@@ -11,23 +11,48 @@ class SessionState extends Equatable {
     this.selectedStaff,
     this.selectedDate,
     this.selectedSlot,
+    this.selectedSlotIds = const <String>[],
+    this.selectedStartTime,
+    this.selectedEndTime,
     this.selectedCustomer,
     this.selectedCustomerId,
   });
 
   final BookingMode mode;
   final bool isCheckIn;
-
-  /// Reflects isOpen from outlet/status API.
-  /// When false, the Check-In button on HomeScreen is disabled.
   final bool isOutletOpen;
-
   final List<ServiceItem> selectedServices;
   final StaffMember? selectedStaff;
   final DateTime? selectedDate;
+
+  /// The first (start) slot — used for display only.
   final SlotItem? selectedSlot;
-  final String? selectedCustomer; // display name
-  final String? selectedCustomerId; // actual UUID for API calls
+
+  /// All slot IDs in the selected range — sent to the booking API.
+  final List<String> selectedSlotIds;
+
+  /// ISO8601 start datetime from the first slot.
+  final String? selectedStartTime;
+
+  /// ISO8601 end datetime from the last slot's endTime field.
+  final String? selectedEndTime;
+
+  final String? selectedCustomer;
+  final String? selectedCustomerId;
+
+  // ── Computed helpers ────────────────────────────────────────────────────────
+
+  /// Total duration of all selected services in minutes.
+  int get totalDuration =>
+      selectedServices.fold(0, (sum, s) => sum + s.durationMin);
+
+  /// Number of 15-min slots needed to cover all services.
+  int get slotsNeeded => (totalDuration / 15).ceil().clamp(1, 999);
+
+  double get totalPrice =>
+      selectedServices.fold(0.0, (sum, s) => sum + s.price);
+
+  String get formattedTotal => '\$${totalPrice.toStringAsFixed(2)}';
 
   SessionState copyWith({
     BookingMode? mode,
@@ -37,6 +62,9 @@ class SessionState extends Equatable {
     StaffMember? selectedStaff,
     DateTime? selectedDate,
     SlotItem? selectedSlot,
+    List<String>? selectedSlotIds,
+    String? selectedStartTime,
+    String? selectedEndTime,
     String? selectedCustomer,
     String? selectedCustomerId,
     bool clearStaff = false,
@@ -52,6 +80,12 @@ class SessionState extends Equatable {
       selectedStaff: clearStaff ? null : selectedStaff ?? this.selectedStaff,
       selectedDate: clearDate ? null : selectedDate ?? this.selectedDate,
       selectedSlot: clearSlot ? null : selectedSlot ?? this.selectedSlot,
+      selectedSlotIds:
+          clearSlot ? const [] : selectedSlotIds ?? this.selectedSlotIds,
+      selectedStartTime:
+          clearSlot ? null : selectedStartTime ?? this.selectedStartTime,
+      selectedEndTime:
+          clearSlot ? null : selectedEndTime ?? this.selectedEndTime,
       selectedCustomer: clearCustomer
           ? null
           : selectedCustomer ?? this.selectedCustomer,
@@ -59,16 +93,6 @@ class SessionState extends Equatable {
           ? null
           : selectedCustomerId ?? this.selectedCustomerId,
     );
-  }
-
-  /// Calculate total price from selected services
-  double get totalPrice {
-    return selectedServices.fold(0.0, (sum, service) => sum + service.price);
-  }
-
-  /// Formatted total price string
-  String get formattedTotal {
-    return '\$${totalPrice.toStringAsFixed(2)}';
   }
 
   @override
@@ -79,6 +103,9 @@ class SessionState extends Equatable {
     selectedStaff,
     selectedDate,
     selectedSlot,
+    selectedSlotIds,
+    selectedStartTime,
+    selectedEndTime,
     selectedCustomer,
     selectedCustomerId,
   ];

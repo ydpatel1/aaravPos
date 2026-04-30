@@ -32,22 +32,18 @@ class _SlotScreenState extends State<SlotScreen> {
     }
   }
 
-  /// Whether a slot's time is in the past compared to now (only relevant for today)
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+
   bool _isPast(SlotItem slot, DateTime selectedDate) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final selDay = DateTime(
-      selectedDate.year,
-      selectedDate.month,
-      selectedDate.day,
-    );
-    if (selDay != today) return false; // future date — never past
+    final selDay = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+    if (selDay != today) return false;
     final dt = slot.toDateTime(selectedDate);
     if (dt == null) return false;
     return dt.isBefore(now);
   }
 
-  /// Format "HH:mm" → "h:mm AM/PM"
   String _formatTime(String time) {
     final parts = time.split(':');
     if (parts.length < 2) return time;
@@ -58,33 +54,122 @@ class _SlotScreenState extends State<SlotScreen> {
     return '$hour:${m.toString().padLeft(2, '0')} $period';
   }
 
-  /// Build bottom bar subtitle: "11:00 AM – 1:15 PM • 2 Services"
   String _buildSubtitle(SessionState session) {
     final slot = session.selectedSlot;
     final services = session.selectedServices;
     if (slot == null) return '${services.length} Service Selected';
 
-    final totalMin = services.fold<int>(0, (sum, s) => sum + s.durationMin);
+    final startFmt = _formatTime(slot.startTime);
+
+    // Compute end time from total duration
+    final totalMin = session.totalDuration;
     final parts = slot.startTime.split(':');
-    if (parts.length < 2) {
-      return '${services.length} Service Selected';
-    }
+    if (parts.length < 2) return '${services.length} Service Selected';
     final startH = int.tryParse(parts[0]) ?? 0;
     final startM = int.tryParse(parts[1]) ?? 0;
     final endTotal = startH * 60 + startM + totalMin;
-    final endH = endTotal ~/ 60;
+    final endH = endTotal ~/ 60 % 24;
     final endM = endTotal % 60;
-    final endTime =
+    final endFmt =
         '${endH > 12 ? endH - 12 : (endH == 0 ? 12 : endH)}:${endM.toString().padLeft(2, '0')} ${endH < 12 ? 'AM' : 'PM'}';
 
-    return '${_formatTime(slot.startTime)} – $endTime • ${services.length} Services';
+    return '$startFmt – $endFmt • ${services.length} Services';
   }
+
+  // ── Multi-slot selection ─────────────────────────────────────────────────────
+
+  /// Handles tapping a slot chip.
+  /// Tries to collect slotsNeeded consecutive available slots starting from tapped.
+  void _handleSlotTap(
+    BuildContext ctx,
+    SlotItem tapped,
+    List<SlotItem> allSlots,
+    DateTime selectedDate,
+  ) {
+    final session = ctx.read<SessionBloc>().state;
+    final slotsNeeded = session.slotsNeeded;
+
+    final idx = allSlots.indexWhere((s) => s.id == tapped.id);
+    if (idx == -1) return;
+
+    // Validate and collect consecutive slots
+    final collected = <SlotItem>[];
+    bool canSelect = true;
+
+    for (var i = 0; i < slotsNeeded; i++) {
+      final pos = idx + i;
+      if (pos >= allSlots.length) {
+        canSelect = false;
+        break;
+      }
+      final slot = allSlots[pos];
+
+      if (slot.isBooked || !slot.available) {
+        canSelect = false;
+        break;
+      }
+      if (_isPast(slot, selectedDate)) {
+        canSelect = false;
+        break;
+      }
+      // Check continuity: previous slot's endTime must equal this slot's startTime
+      if (i > 0) {
+        final prev = allSlots[pos - 1];
+        if (prev.endTime != slot.startTime) {
+          canSelect = false;
+          break;
+        }
+      }
+      collected.add(slot);
+    }
+
+    if (!canSelect || collected.isEmpty) {
+      final totalMin = session.totalDuration;
+      ScaffoldMessenger.of(ctx).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Not enough consecutive available slots for $totalMin minutes',
+          ),
+          backgroundColor: const Color(0xFFE12242),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // Build ISO8601 start and end times
+    final date = selectedDate;
+    final startSlot = collected.first;
+    final lastSlot = collected.last;
+
+    final startParts = startSlot.startTime.split(':');
+    final endParts = lastSlot.endTime.split(':');
+
+    final startDt = DateTime(
+      date.year, date.month, date.day,
+      int.parse(startParts[0]), int.parse(startParts[1]),
+    );
+    final endDt = DateTime(
+      date.year, date.month, date.day,
+      int.parse(endParts[0]), int.parse(endParts[1]),
+    );
+
+    ctx.read<SessionBloc>().setSlotSelection(
+      startSlot: startSlot,
+      slotIds: collected.map((s) => s.id).toList(),
+      startTime: startDt.toIso8601String(),
+      endTime: endDt.toIso8601String(),
+    );
+  }
+
+  // ── Build ────────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final session = context.watch<SessionBloc>().state;
     final selectedDate = session.selectedDate ?? DateTime.now();
     final selectedSlot = session.selectedSlot;
+    final selectedSlotIds = session.selectedSlotIds;
 
     return Scaffold(
       appBar: CommonAppBar(
@@ -98,7 +183,7 @@ class _SlotScreenState extends State<SlotScreen> {
         total: 'Total: ${session.formattedTotal}',
         subtitle: _buildSubtitle(session),
         primaryLabel: 'Continue',
-        primaryEnabled: selectedSlot != null,
+        primaryEnabled: selectedSlot != null && selectedSlotIds.isNotEmpty,
         onPrimary: () => context.push(AppRoutes.review),
       ),
       body: Padding(
@@ -124,7 +209,37 @@ class _SlotScreenState extends State<SlotScreen> {
               );
             }
 
-            if (state.items.isEmpty) {
+            // Flatten all slots into one ordered list for consecutive checking
+            final allSlots = List<SlotItem>.from(state.items)
+              ..sort((a, b) => a.startTime.compareTo(b.startTime));
+
+            // Check if all available slots are in the past
+            final hasAvailable = allSlots.any(
+              (s) => s.available && !_isPast(s, selectedDate),
+            );
+
+            if (!hasAvailable && allSlots.isNotEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.schedule, size: 48, color: Color(0xFFB0B0B0)),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'No available slots for today',
+                      style: TextStyle(color: Color(0xFF737373), fontSize: 16),
+                    ),
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: () => context.pop(),
+                      child: const Text('Select a different date'),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            if (allSlots.isEmpty) {
               return const Center(
                 child: Text(
                   'No time slots available',
@@ -133,14 +248,13 @@ class _SlotScreenState extends State<SlotScreen> {
               );
             }
 
-            // Group ALL slots (including unavailable) into Morning/Afternoon/Evening
+            // Group into Morning / Afternoon / Evening
             final groups = <String, List<SlotItem>>{
               'Morning': [],
               'Afternoon': [],
               'Evening': [],
             };
-
-            for (final slot in state.items) {
+            for (final slot in allSlots) {
               final hour = int.tryParse(slot.startTime.split(':')[0]) ?? 0;
               if (hour >= 6 && hour < 12) {
                 groups['Morning']!.add(slot);
@@ -150,7 +264,6 @@ class _SlotScreenState extends State<SlotScreen> {
                 groups['Evening']!.add(slot);
               }
             }
-
             groups.removeWhere((_, v) => v.isEmpty);
 
             return ListView(
@@ -183,21 +296,28 @@ class _SlotScreenState extends State<SlotScreen> {
                         spacing: 10,
                         runSpacing: 10,
                         children: entry.value.map<Widget>((slot) {
-                          final isSelected = selectedSlot?.id == slot.id;
+                          final isStart = selectedSlot?.id == slot.id;
+                          final isContinuation = !isStart &&
+                              selectedSlotIds.contains(slot.id);
                           final isPast = _isPast(slot, selectedDate);
                           final isUnavailable = !slot.available;
                           final isDisabled = isUnavailable || isPast;
 
                           return _SlotPill(
                             slot: slot,
-                            isSelected: isSelected,
+                            isStart: isStart,
+                            isContinuation: isContinuation,
                             isUnavailable: isUnavailable,
                             isPast: isPast,
                             isMobile: context.isMobile,
                             onTap: isDisabled
                                 ? null
-                                : () =>
-                                      context.read<SessionBloc>().setSlot(slot),
+                                : () => _handleSlotTap(
+                                      context,
+                                      slot,
+                                      allSlots,
+                                      selectedDate,
+                                    ),
                           );
                         }).toList(),
                       ),
@@ -213,10 +333,13 @@ class _SlotScreenState extends State<SlotScreen> {
   }
 }
 
+// ── Slot pill widget ──────────────────────────────────────────────────────────
+
 class _SlotPill extends StatelessWidget {
   const _SlotPill({
     required this.slot,
-    required this.isSelected,
+    required this.isStart,
+    required this.isContinuation,
     required this.isUnavailable,
     required this.isPast,
     required this.isMobile,
@@ -224,7 +347,8 @@ class _SlotPill extends StatelessWidget {
   });
 
   final SlotItem slot;
-  final bool isSelected;
+  final bool isStart;        // tapped start slot — bold, full border
+  final bool isContinuation; // auto-selected continuation — lighter border
   final bool isUnavailable;
   final bool isPast;
   final bool isMobile;
@@ -232,27 +356,44 @@ class _SlotPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Style priority: selected > unavailable > past > normal
     Color bgColor;
     Color borderColor;
     Color textColor;
+    double borderWidth;
+    FontWeight fontWeight;
 
-    if (isSelected) {
+    if (isStart) {
+      // Start slot: full red, bold, thick border
       bgColor = const Color(0xFFE12242);
       borderColor = const Color(0xFFE12242);
       textColor = Colors.white;
+      borderWidth = 2;
+      fontWeight = FontWeight.w700;
+    } else if (isContinuation) {
+      // Continuation slots: same tint, lighter border
+      bgColor = const Color(0xFFFFE4E8);
+      borderColor = const Color(0xFFE12242).withValues(alpha: 0.5);
+      textColor = const Color(0xFFE12242);
+      borderWidth = 1;
+      fontWeight = FontWeight.w500;
     } else if (isUnavailable) {
-      bgColor = const Color(0xFFFFE4E8); // pink tint
+      bgColor = const Color(0xFFFFE4E8);
       borderColor = const Color(0xFFFFB3BE);
       textColor = const Color(0xFFB0B0B0);
+      borderWidth = 1;
+      fontWeight = FontWeight.w400;
     } else if (isPast) {
       bgColor = const Color(0xFFF2F2F4);
       borderColor = const Color(0xFFD5D5D8);
       textColor = const Color(0xFFB0B0B0);
+      borderWidth = 1;
+      fontWeight = FontWeight.w400;
     } else {
       bgColor = const Color(0xFFF2F2F4);
       borderColor = const Color(0xFFD5D5D8);
       textColor = const Color(0xFF2B2B2B);
+      borderWidth = 1;
+      fontWeight = FontWeight.w500;
     }
 
     final needsStrikethrough = isUnavailable || isPast;
@@ -266,13 +407,13 @@ class _SlotPill extends StatelessWidget {
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: borderColor),
+          border: Border.all(color: borderColor, width: borderWidth),
         ),
         child: Text(
           slot.startTime,
           style: TextStyle(
             color: textColor,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            fontWeight: fontWeight,
             fontSize: isMobile ? 13 : 15,
             decoration: needsStrikethrough
                 ? TextDecoration.lineThrough
@@ -285,8 +426,8 @@ class _SlotPill extends StatelessWidget {
   }
 }
 
-/// Shimmer skeleton that matches the slot screen layout:
-/// section header pill → row of slot chips, repeated for Morning/Afternoon/Evening
+// ── Shimmer ───────────────────────────────────────────────────────────────────
+
 class _SlotShimmer extends StatelessWidget {
   const _SlotShimmer({required this.isMobile});
 
@@ -300,21 +441,15 @@ class _SlotShimmer extends StatelessWidget {
       child: ListView(
         children: [
           for (int section = 0; section < 3; section++) ...[
-            // Section header pill
             ShimmerBox(height: 48, borderRadius: 12),
             const SizedBox(height: 12),
-            // Two rows of slot chips
             for (int row = 0; row < 2; row++) ...[
               Wrap(
                 spacing: 10,
                 runSpacing: 10,
                 children: List.generate(
                   isMobile ? 3 : 4,
-                  (_) => ShimmerBox(
-                    height: 44,
-                    width: chipWidth,
-                    borderRadius: 12,
-                  ),
+                  (_) => ShimmerBox(height: 44, width: chipWidth, borderRadius: 12),
                 ),
               ),
               const SizedBox(height: 10),

@@ -4,6 +4,7 @@ class SlotItem extends Equatable {
   const SlotItem({
     required this.id,
     required this.startTime,
+    required this.endTime,
     required this.available,
     this.isBooked = false,
     this.startUtc,
@@ -11,9 +12,10 @@ class SlotItem extends Equatable {
 
   final String id;
   final String startTime; // e.g., "13:30"
-  final bool available; // Derived from: status == "AVAILABLE" && !isBooked
+  final String endTime;   // e.g., "13:45" — from API end_time field
+  final bool available;
   final bool isBooked;
-  final String? startUtc; // e.g., "2026-04-27T17:30:00.000Z"
+  final String? startUtc;
 
   factory SlotItem.fromJson(Map<String, dynamic> json) {
     final status = json['status'] as String? ?? '';
@@ -22,6 +24,7 @@ class SlotItem extends Equatable {
     return SlotItem(
       id: json['id'] as String? ?? '',
       startTime: json['start_time'] as String? ?? '',
+      endTime: json['end_time'] as String? ?? '',
       available: status == 'AVAILABLE' && !isBooked,
       isBooked: isBooked,
       startUtc: json['startUtc'] as String?,
@@ -45,5 +48,5 @@ class SlotItem extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, startTime, available, isBooked, startUtc];
+  List<Object?> get props => [id, startTime, endTime, available, isBooked, startUtc];
 }
