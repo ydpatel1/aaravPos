@@ -94,19 +94,23 @@ class _ReviewScreenState extends State<ReviewScreen> {
   }
 
   void _onPhoneChanged(String value) {
-    // Show suggestions only when 8 or 9 digits are typed (spec §4)
-    final shouldSearch = value.length == 8 || value.length == 9;
+    // Show suggestions dropdown from 3+ digits (UX auto-fill)
+    // Trigger the actual API search at 8–9 digits (spec §4)
+    final showDropdown = value.length >= 3;
     setState(() {
-      _showSuggestions = shouldSearch;
+      _showSuggestions = showDropdown;
       if (_autoValidate) _phoneError = _validatePhone(value);
     });
 
-    if (shouldSearch) {
-      // Search with countryCode+phone as the search param (spec §4 API)
+    if (value.length == 8 || value.length == 9) {
+      // Full search with countryCode+phone as the search param (spec §4 API)
       final searchQuery = '+${_selectedCountry.phoneCode}$value';
       context.read<CustomerBloc>().search(searchQuery);
-    } else if (value.length < 8) {
-      // Clear customer selection when below threshold (spec §4)
+    } else if (value.length >= 3) {
+      // Lightweight search for suggestions using phone digits only
+      context.read<CustomerBloc>().search(value);
+    } else {
+      // Below 3 digits — clear everything
       _clearCustomerSelection();
     }
   }
