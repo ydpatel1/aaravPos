@@ -23,6 +23,9 @@ class _DateScreenState extends State<DateScreen> {
   @override
   void initState() {
     super.initState();
+    // Every time DateScreen opens, wipe slot and customer
+    // so the user always starts fresh from this point.
+    context.read<SessionBloc>().clearDateAndBelow();
     // Pre-select today in session so Continue is enabled immediately
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<SessionBloc>().setDate(DateTime.now());

@@ -76,13 +76,16 @@ class SessionState extends Equatable {
     bool clearDate = false,
     bool clearSlot = false,
     bool clearCustomer = false,
+    bool clearServices = false,
   }) {
     return SessionState(
       mode: mode ?? this.mode,
       isCheckIn: isCheckIn ?? this.isCheckIn,
       isOutletOpen: isOutletOpen ?? this.isOutletOpen,
       outletOpenTime: outletOpenTime ?? this.outletOpenTime,
-      selectedServices: selectedServices ?? this.selectedServices,
+      selectedServices: clearServices
+          ? const []
+          : selectedServices ?? this.selectedServices,
       selectedStaff: clearStaff ? null : selectedStaff ?? this.selectedStaff,
       selectedDate: clearDate ? null : selectedDate ?? this.selectedDate,
       selectedSlot: clearSlot ? null : selectedSlot ?? this.selectedSlot,
@@ -104,6 +107,7 @@ class SessionState extends Equatable {
   @override
   List<Object?> get props => [
     mode,
+    isCheckIn,
     isOutletOpen,
     outletOpenTime,
     selectedServices,

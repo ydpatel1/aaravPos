@@ -29,6 +29,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
   @override
   void initState() {
     super.initState();
+    // Every time ServicesScreen opens, wipe all downstream selections
+    // so the user always starts fresh from this point.
+    context.read<SessionBloc>().clearServicesAndBelow();
     context.read<ServiceBloc>().fetchServices();
   }
 

@@ -84,6 +84,30 @@ class SessionResetRequested extends SessionEvent {
   const SessionResetRequested();
 }
 
+/// Clears services and everything downstream (staff, date, slot, customer).
+/// Called when ServicesScreen opens.
+class SessionServicesAndBelowCleared extends SessionEvent {
+  const SessionServicesAndBelowCleared();
+}
+
+/// Clears staff and everything downstream (date, slot, customer).
+/// Called when StaffScreen opens.
+class SessionStaffAndBelowCleared extends SessionEvent {
+  const SessionStaffAndBelowCleared();
+}
+
+/// Clears date and everything downstream (slot, customer).
+/// Called when DateScreen opens.
+class SessionDateAndBelowCleared extends SessionEvent {
+  const SessionDateAndBelowCleared();
+}
+
+/// Clears slot selection and customer.
+/// Called when SlotScreen opens.
+class SessionSlotAndBelowCleared extends SessionEvent {
+  const SessionSlotAndBelowCleared();
+}
+
 class SessionOutletStatusLoaded extends SessionEvent {
   const SessionOutletStatusLoaded({required this.isOpen, this.openTime = ''});
 

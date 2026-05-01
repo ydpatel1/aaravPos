@@ -18,6 +18,10 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     on<SessionCustomerChanged>(_onCustomerChanged);
     on<SessionResetRequested>(_onResetRequested);
     on<SessionOutletStatusLoaded>(_onOutletStatusLoaded);
+    on<SessionServicesAndBelowCleared>(_onServicesAndBelowCleared);
+    on<SessionStaffAndBelowCleared>(_onStaffAndBelowCleared);
+    on<SessionDateAndBelowCleared>(_onDateAndBelowCleared);
+    on<SessionSlotAndBelowCleared>(_onSlotAndBelowCleared);
   }
 
   void _onModeChanged(SessionModeChanged event, Emitter<SessionState> emit) {
@@ -98,6 +102,55 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     );
   }
 
+  // ── Downstream-clear handlers ────────────────────────────────────────────────
+
+  /// ServicesScreen mounted → clear services, staff, date, slot, customer.
+  void _onServicesAndBelowCleared(
+    SessionServicesAndBelowCleared event,
+    Emitter<SessionState> emit,
+  ) {
+    emit(
+      state.copyWith(
+        clearServices: true,
+        clearStaff: true,
+        clearDate: true,
+        clearSlot: true,
+        clearCustomer: true,
+      ),
+    );
+  }
+
+  /// StaffScreen mounted → clear staff, date, slot, customer.
+  void _onStaffAndBelowCleared(
+    SessionStaffAndBelowCleared event,
+    Emitter<SessionState> emit,
+  ) {
+    emit(
+      state.copyWith(
+        clearStaff: true,
+        clearDate: true,
+        clearSlot: true,
+        clearCustomer: true,
+      ),
+    );
+  }
+
+  /// DateScreen mounted → clear date, slot, customer.
+  void _onDateAndBelowCleared(
+    SessionDateAndBelowCleared event,
+    Emitter<SessionState> emit,
+  ) {
+    emit(state.copyWith(clearDate: true, clearSlot: true, clearCustomer: true));
+  }
+
+  /// SlotScreen mounted → clear slot selection and customer.
+  void _onSlotAndBelowCleared(
+    SessionSlotAndBelowCleared event,
+    Emitter<SessionState> emit,
+  ) {
+    emit(state.copyWith(clearSlot: true, clearCustomer: true));
+  }
+
   // Compatibility helpers
   void setMode(BookingMode mode) => add(SessionModeChanged(mode));
   void toggleService(ServiceItem service) =>
@@ -122,4 +175,17 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   void reset() => add(const SessionResetRequested());
   void setOutletOpen(bool isOpen) =>
       add(SessionOutletStatusLoaded(isOpen: isOpen));
+
+  // ── Downstream-clear helpers (called from screen initState) ─────────────────
+  /// Called by ServicesScreen — clears services, staff, date, slot, customer.
+  void clearServicesAndBelow() => add(const SessionServicesAndBelowCleared());
+
+  /// Called by StaffScreen — clears staff, date, slot, customer.
+  void clearStaffAndBelow() => add(const SessionStaffAndBelowCleared());
+
+  /// Called by DateScreen — clears date, slot, customer.
+  void clearDateAndBelow() => add(const SessionDateAndBelowCleared());
+
+  /// Called by SlotScreen — clears slot selection and customer.
+  void clearSlotAndBelow() => add(const SessionSlotAndBelowCleared());
 }

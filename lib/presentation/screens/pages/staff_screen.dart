@@ -28,6 +28,9 @@ class _StaffScreenState extends State<StaffScreen> {
   @override
   void initState() {
     super.initState();
+    // Every time StaffScreen opens, wipe date, slot and customer
+    // so the user always starts fresh from this point.
+    context.read<SessionBloc>().clearStaffAndBelow();
     context.read<StaffBloc>().fetchStaff();
   }
 

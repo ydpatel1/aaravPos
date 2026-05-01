@@ -24,6 +24,9 @@ class _SlotScreenState extends State<SlotScreen> {
   @override
   void initState() {
     super.initState();
+    // Every time SlotScreen opens, wipe the previous slot selection and customer
+    // so the user always starts fresh from this point.
+    context.read<SessionBloc>().clearSlotAndBelow();
     final session = context.read<SessionBloc>().state;
     final staffId = session.selectedStaff?.id;
     final date = session.selectedDate;
