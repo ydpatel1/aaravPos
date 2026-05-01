@@ -110,7 +110,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           outletId: outletId,
         );
         _sessionBloc.add(
-          SessionOutletStatusLoaded(isOpen: outletStatus.isOpen),
+          SessionOutletStatusLoaded(
+            isOpen: outletStatus.isOpen,
+            openTime: outletStatus.openTime,
+          ),
         );
       } else {
         _sessionBloc.setOutletOpen(false);

@@ -1,3 +1,4 @@
+import 'package:aaravpos/domain/model/outlet_status.dart';
 import 'package:aaravpos/presentation/bloc/auth/auth_bloc.dart';
 import 'package:aaravpos/presentation/bloc/session/session_bloc.dart';
 import 'package:flutter/material.dart';
@@ -61,47 +62,68 @@ class _HomeScreenState extends State<HomeScreen> {
                       return _buildShimmer(isMobile);
                     }
 
-                    final isOutletOpen = context
-                        .watch<SessionBloc>()
-                        .state
-                        .isOutletOpen;
+                    final sessionState = context.watch<SessionBloc>().state;
+                    final isOutletOpen = sessionState.isOutletOpen;
+                    final outletOpenTime = sessionState.outletOpenTime;
+
+                    Future<void> onRefresh() async {
+                      context.read<AuthBloc>().refreshOutletStatus();
+                      // Wait until the bloc finishes loading before
+                      // dismissing the refresh indicator.
+                      await context.read<AuthBloc>().stream.firstWhere(
+                        (s) => s.status != AuthStatus.outletLoading,
+                      );
+                    }
 
                     return isMobile
-                        ? ListView(
-                            children: [
-                              _ModeCard(
-                                title: 'Appointment',
-                                icon: Icons.calendar_month_outlined,
-                                enabled: !isOutletOpen,
-                              ),
-                              const SizedBox(height: 16),
-                              _ModeCard(
-                                title: 'Check-In',
-                                icon: Icons.place_outlined,
-                                enabled: isOutletOpen,
-                              ),
-                            ],
-                          )
-                        : Container(
-                            constraints: BoxConstraints(maxWidth: 750),
-                            child: Row(
+                        ? RefreshIndicator(
+                            onRefresh: onRefresh,
+                            child: ListView(
                               children: [
-                                Expanded(
-                                  child: _ModeCard(
-                                    title: 'Appointment',
-                                    icon: Icons.calendar_month_outlined,
-                                    enabled: !isOutletOpen,
-                                  ),
+                                _ModeCard(
+                                  title: 'Appointment',
+                                  icon: Icons.calendar_month_outlined,
+                                  enabled: true,
                                 ),
-                                const SizedBox(width: 22),
-                                Expanded(
-                                  child: _ModeCard(
-                                    title: 'Check-In',
-                                    icon: Icons.place_outlined,
-                                    enabled: isOutletOpen,
-                                  ),
+                                const SizedBox(height: 16),
+                                _ModeCard(
+                                  title: 'Check-In',
+                                  icon: Icons.place_outlined,
+                                  enabled: isOutletOpen,
+                                  outletOpenTime: outletOpenTime,
                                 ),
                               ],
+                            ),
+                          )
+                        : RefreshIndicator(
+                            onRefresh: onRefresh,
+                            child: SingleChildScrollView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              child: Container(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 750,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: _ModeCard(
+                                        title: 'Appointment',
+                                        icon: Icons.calendar_month_outlined,
+                                        enabled: true,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 22),
+                                    Expanded(
+                                      child: _ModeCard(
+                                        title: 'Check-In',
+                                        icon: Icons.place_outlined,
+                                        enabled: isOutletOpen,
+                                        outletOpenTime: outletOpenTime,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           );
                   },
@@ -140,11 +162,15 @@ class _ModeCard extends StatelessWidget {
     required this.title,
     required this.icon,
     required this.enabled,
+    this.outletOpenTime = '',
   });
 
   final String title;
   final IconData icon;
   final bool enabled;
+
+  /// Raw openTime from the API — shown as "Opens at HH:mm" when outlet is closed.
+  final String outletOpenTime;
 
   @override
   Widget build(BuildContext context) {
@@ -208,9 +234,12 @@ class _ModeCard extends StatelessWidget {
               ),
               if (!enabled) ...[
                 const SizedBox(height: 8),
-                const Text(
-                  'Outlet is closed',
-                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                Text(
+                  () {
+                    final t = OutletStatus.formatDisplayTime(outletOpenTime);
+                    return t.isNotEmpty ? 'Opens at $t' : 'Outlet is closed';
+                  }(),
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
                 ),
               ],
             ],

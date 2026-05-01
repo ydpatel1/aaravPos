@@ -54,5 +54,5 @@ Future<void> configureDependencies(
   getIt.registerLazySingleton<SlotBloc>(() => SlotBloc(getIt()));
   getIt.registerLazySingleton<CustomerBloc>(() => CustomerBloc(getIt()));
   getIt.registerLazySingleton<ConsentBloc>(() => ConsentBloc(getIt()));
-  getIt.registerLazySingleton<BookingBloc>(() => BookingBloc(getIt()));
+  getIt.registerLazySingleton<BookingBloc>(() => BookingBloc(getIt(), getIt()));
 }

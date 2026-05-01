@@ -18,7 +18,19 @@ class DateScreen extends StatefulWidget {
 
 class _DateScreenState extends State<DateScreen> {
   DateTime _focusedDay = DateTime.now();
-  DateTime? _selectedDay;
+  DateTime? _selectedDay = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    // Every time DateScreen opens, wipe slot and customer
+    // so the user always starts fresh from this point.
+    context.read<SessionBloc>().clearDateAndBelow();
+    // Pre-select today in session so Continue is enabled immediately
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<SessionBloc>().setDate(DateTime.now());
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +45,7 @@ class _DateScreenState extends State<DateScreen> {
         ),
       ),
       bottomNavigationBar: KioskBottomBar(
-        total: 'Total: \$215.00',
+        total: 'Total: ${session.formattedTotal}',
         subtitle: '${session.selectedServices.length} Service Selected',
         primaryLabel: 'Continue',
         primaryEnabled: _selectedDay != null,
@@ -54,7 +66,7 @@ class _DateScreenState extends State<DateScreen> {
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -110,19 +122,22 @@ class _DateScreenState extends State<DateScreen> {
                 ),
               ),
               calendarStyle: CalendarStyle(
+                cellMargin: EdgeInsets.symmetric(horizontal: 2,vertical: 8),
                 todayDecoration: BoxDecoration(
-                  color: const Color(0xFFE12242).withOpacity(0.2),
+                  color: const Color(0xFFE12242).withValues(alpha: 0.2),
                   shape: BoxShape.rectangle,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 todayTextStyle: const TextStyle(
                   color: Color(0xFFE12242),
+
                   fontWeight: FontWeight.w700,
                 ),
                 selectedDecoration: BoxDecoration(
                   color: const Color(0xFFE12242),
-                  shape: BoxShape.rectangle,
+                   shape: BoxShape.rectangle,
                   borderRadius: BorderRadius.circular(12),
+                  
                 ),
                 selectedTextStyle: const TextStyle(
                   color: Colors.white,
@@ -136,8 +151,32 @@ class _DateScreenState extends State<DateScreen> {
                   shape: BoxShape.rectangle,
                   borderRadius: BorderRadius.circular(12),
                 ),
+                outsideDecoration: BoxDecoration(
+                  shape: BoxShape.rectangle,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                disabledDecoration: BoxDecoration(
+                  shape: BoxShape.rectangle,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                holidayDecoration: BoxDecoration(
+                  shape: BoxShape.rectangle,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                rangeStartDecoration: BoxDecoration(
+                  shape: BoxShape.rectangle,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                rangeEndDecoration: BoxDecoration(
+                  shape: BoxShape.rectangle,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                withinRangeDecoration: BoxDecoration(
+                  shape: BoxShape.rectangle,
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 disabledTextStyle: const TextStyle(color: Color(0xFFD4D4D6)),
-                outsideTextStyle: const TextStyle(color: Color(0xFFD4D4D6)),
+                outsideTextStyle: const TextStyle(color: Colors.black),
               ),
               enabledDayPredicate: (day) {
                 // Disable past dates

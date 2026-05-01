@@ -29,6 +29,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
   @override
   void initState() {
     super.initState();
+    // Every time ServicesScreen opens, wipe all downstream selections
+    // so the user always starts fresh from this point.
+    context.read<SessionBloc>().clearServicesAndBelow();
     context.read<ServiceBloc>().fetchServices();
   }
 
@@ -194,6 +197,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                                   duration: item.durationMin,
                                   price: item.price,
                                   consentRequired: item.consentRequired,
+                                  consentTemplateId: item.consentTemplate?.id,
                                   isSelected: session.selectedServices.contains(
                                     item,
                                   ),

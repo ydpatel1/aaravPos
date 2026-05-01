@@ -56,6 +56,7 @@ dependencies:
   cached_network_image: ^3.4.1
   flutter_staggered_grid_view: ^0.7.0
   table_calendar: ^3.1.2
+  country_picker: ^2.0.26
   
   # Utils
   intl: ^0.20.1
@@ -82,9 +83,8 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  assets:
-    - assets/animations/
-    - assets/images/
+  # assets:
+  #   - assets/Celebration.lottie
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

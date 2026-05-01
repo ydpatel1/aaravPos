@@ -1,4 +1,5 @@
 import '../../core/network/api_service.dart';
+import '../../domain/model/customer.dart';
 import '../../domain/model/service_item.dart';
 import '../../domain/model/slot_item.dart';
 import '../../domain/model/staff_member.dart';
@@ -254,6 +255,182 @@ class BookingRemoteDataSource {
       return items;
     } catch (e) {
       throw Exception('Failed to fetch slots: ${e.toString()}');
+    }
+  }
+
+  /// GET customer/list/$tenantId?page=1&limit=20&search=$encodedPhone
+  ///
+  /// Search customers by phone number (without country code)
+  /// Response: { "success": true, "data": { "data": [ { "id": "...", "first_name": "...", "last_name": "...", "phone": "...", "email": "..." } ] } }
+  Future<List<Customer>> searchCustomers({
+    required String tenantId,
+    required String phoneNumber,
+  }) async {
+    try {
+      final response = await _apiService.get(
+        'customer/list/$tenantId',
+        queryParameters: <String, dynamic>{
+          'page': 1,
+          'limit': 20,
+          'search': phoneNumber, // Dio encodes this automatically — do NOT pre-encode
+        },
+      );
+
+      final body = response.data;
+      if (body is! Map<String, dynamic>) {
+        throw Exception('Invalid response format: expected Map');
+      }
+
+      // API returns nested structure: { data: { data: [...] } }
+      final outerData = body['data'];
+      if (outerData is! Map<String, dynamic>) {
+        return []; // No data
+      }
+
+      final innerData = outerData['data'];
+      if (innerData is! List) {
+        return []; // No customers found
+      }
+
+      final customers = <Customer>[];
+      for (final customer in innerData) {
+        if (customer is! Map<String, dynamic>) continue;
+        try {
+          customers.add(Customer.fromJson(customer));
+        } catch (e) {
+          continue;
+        }
+      }
+
+      return customers;
+    } catch (e) {
+      throw Exception('Failed to search customers: ${e.toString()}');
+    }
+  }
+
+  /// GET concent/check/{customerId}/{consentFormId}?serviceId={serviceId}
+  /// Note: API uses "concent" (typo in their API)
+  Future<Map<String, dynamic>> checkConsentStatus({
+    required String customerId,
+    required String consentFormId,
+    required String serviceId,
+  }) async {
+    try {
+      final response = await _apiService.get(
+        'concent/check/$customerId/$consentFormId',
+        queryParameters: <String, dynamic>{'serviceId': serviceId},
+      );
+      final body = response.data;
+      if (body is! Map<String, dynamic>) {
+        throw Exception('Invalid consent check response');
+      }
+      return body;
+    } catch (e) {
+      throw Exception('Failed to check consent: ${e.toString()}');
+    }
+  }
+
+  /// POST concent/customer-sign — API 8
+  /// Note: API uses "concent" (typo in their API)
+  /// Called AFTER booking to attach the signed consent to the appointment.
+  Future<void> signConsentWithAppointment({
+    required String tenantId,
+    required String appointmentId,
+    required String customerId,
+    required List<String> serviceIds,
+    required String outletId,
+    required String consentFormId,
+    required String staffId,
+    required String signatureType,
+    String? imageUrl,
+    String? typedName,
+    bool isChecked = false,
+  }) async {
+    try {
+      final payload = <String, dynamic>{
+        'tenantId': tenantId,
+        'appointmentId': appointmentId,
+        'customerId': customerId,
+        'serviceIds': serviceIds,
+        'outletId': outletId,
+        'concentFormId': consentFormId, // API uses "concentFormId" (their typo)
+        'signatureType': signatureType,
+        'channel': 'POS',
+        'staffId': staffId,
+        if (signatureType == 'SIGNATURE_IMAGE' && imageUrl != null)
+          'imageUrl': imageUrl,
+        if (signatureType == 'TYPED_NAME' && typedName != null)
+          'typedName': typedName,
+        if (signatureType == 'CHECKBOX_ONLY') 'isChecked': isChecked,
+      };
+
+      final response = await _apiService.post(
+        'concent/customer-sign',
+        data: payload,
+      );
+      final body = response.data;
+      if (body is Map<String, dynamic> && body['success'] == false) {
+        throw Exception(body['message'] as String? ?? 'Consent sign failed');
+      }
+    } catch (e) {
+      throw Exception('Failed to sign consent: ${e.toString()}');
+    }
+  }
+
+  Future<String> submitAppointment({
+    required bool isCheckIn,
+    required String customerId,
+    required String staffId,
+    required String outletId,
+    required String tenantId,
+    required List<String> serviceIds,
+    required List<String> slotIds,
+    required String date,
+    required String startTime,
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String phone,
+  }) async {
+    try {
+      final endpoint = isCheckIn ? 'appointment/checkin' : 'appointment';
+
+      final customerPayload = <String, dynamic>{
+        'first_name': firstName.trim(),
+        'last_name': lastName.trim(),
+        'email': email,
+        'phone': phone, // full phone e.g. "+1XXXXXXXXXX"
+        'gender': '',
+        'date_of_birth': '',
+      };
+
+      final payload = <String, dynamic>{
+        'tenantId': tenantId,
+        'outletId': outletId,
+        'staffId': staffId,
+        'serviceIds': serviceIds,
+        'slotIds': slotIds,
+        'date': date,
+        'startTime': startTime,
+        'customer': customerPayload,
+        'requiresConsent': false,
+        if (!isCheckIn) 'isWalkIn': false,
+      };
+
+      final response = await _apiService.post(endpoint, data: payload);
+      final body = response.data;
+      if (body is Map<String, dynamic>) {
+        if (body['success'] == false) {
+          throw Exception(body['message'] as String? ?? 'Booking failed');
+        }
+        final data = body['data'] as Map<String, dynamic>?;
+        return data?['id'] as String? ??
+            body['id'] as String? ??
+            'BK-${DateTime.now().millisecondsSinceEpoch}';
+      }
+      return 'BK-${DateTime.now().millisecondsSinceEpoch}';
+    } catch (e) {
+      throw Exception('Failed to submit booking: ${e.toString()}');
     }
   }
 }

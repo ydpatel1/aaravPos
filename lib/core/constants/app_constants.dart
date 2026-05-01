@@ -16,5 +16,5 @@ class AppConstants {
   static const Duration receiveTimeout = Duration(seconds: 30);
 
   // Debounce
-  static const Duration searchDebounce = Duration(milliseconds: 500);
+  static const Duration searchDebounce = Duration(milliseconds: 600);
 }

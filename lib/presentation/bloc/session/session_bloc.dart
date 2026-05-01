@@ -14,9 +14,14 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     on<SessionStaffChanged>(_onStaffChanged);
     on<SessionDateChanged>(_onDateChanged);
     on<SessionSlotChanged>(_onSlotChanged);
+    on<SessionSlotSelectionChanged>(_onSlotSelectionChanged);
     on<SessionCustomerChanged>(_onCustomerChanged);
     on<SessionResetRequested>(_onResetRequested);
     on<SessionOutletStatusLoaded>(_onOutletStatusLoaded);
+    on<SessionServicesAndBelowCleared>(_onServicesAndBelowCleared);
+    on<SessionStaffAndBelowCleared>(_onStaffAndBelowCleared);
+    on<SessionDateAndBelowCleared>(_onDateAndBelowCleared);
+    on<SessionSlotAndBelowCleared>(_onSlotAndBelowCleared);
   }
 
   void _onModeChanged(SessionModeChanged event, Emitter<SessionState> emit) {
@@ -53,11 +58,28 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     emit(state.copyWith(selectedSlot: event.slot));
   }
 
+  void _onSlotSelectionChanged(
+    SessionSlotSelectionChanged event,
+    Emitter<SessionState> emit,
+  ) {
+    emit(state.copyWith(
+      selectedSlot: event.startSlot,
+      selectedSlotIds: event.slotIds,
+      selectedStartTime: event.startTime,
+      selectedEndTime: event.endTime,
+    ));
+  }
+
   void _onCustomerChanged(
     SessionCustomerChanged event,
     Emitter<SessionState> emit,
   ) {
-    emit(state.copyWith(selectedCustomer: event.customer));
+    emit(
+      state.copyWith(
+        selectedCustomer: event.customer,
+        selectedCustomerId: event.customerId,
+      ),
+    );
   }
 
   void _onResetRequested(
@@ -72,7 +94,61 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     SessionOutletStatusLoaded event,
     Emitter<SessionState> emit,
   ) {
-    emit(state.copyWith(isOutletOpen: event.isOpen));
+    emit(
+      state.copyWith(
+        isOutletOpen: event.isOpen,
+        outletOpenTime: event.openTime,
+      ),
+    );
+  }
+
+  // ── Downstream-clear handlers ────────────────────────────────────────────────
+
+  /// ServicesScreen mounted → clear services, staff, date, slot, customer.
+  void _onServicesAndBelowCleared(
+    SessionServicesAndBelowCleared event,
+    Emitter<SessionState> emit,
+  ) {
+    emit(
+      state.copyWith(
+        clearServices: true,
+        clearStaff: true,
+        clearDate: true,
+        clearSlot: true,
+        clearCustomer: true,
+      ),
+    );
+  }
+
+  /// StaffScreen mounted → clear staff, date, slot, customer.
+  void _onStaffAndBelowCleared(
+    SessionStaffAndBelowCleared event,
+    Emitter<SessionState> emit,
+  ) {
+    emit(
+      state.copyWith(
+        clearStaff: true,
+        clearDate: true,
+        clearSlot: true,
+        clearCustomer: true,
+      ),
+    );
+  }
+
+  /// DateScreen mounted → clear date, slot, customer.
+  void _onDateAndBelowCleared(
+    SessionDateAndBelowCleared event,
+    Emitter<SessionState> emit,
+  ) {
+    emit(state.copyWith(clearDate: true, clearSlot: true, clearCustomer: true));
+  }
+
+  /// SlotScreen mounted → clear slot selection and customer.
+  void _onSlotAndBelowCleared(
+    SessionSlotAndBelowCleared event,
+    Emitter<SessionState> emit,
+  ) {
+    emit(state.copyWith(clearSlot: true, clearCustomer: true));
   }
 
   // Compatibility helpers
@@ -82,8 +158,34 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   void setStaff(StaffMember staff) => add(SessionStaffChanged(staff));
   void setDate(DateTime date) => add(SessionDateChanged(date));
   void setSlot(SlotItem slot) => add(SessionSlotChanged(slot));
-  void setCustomer(String customer) => add(SessionCustomerChanged(customer));
+
+  void setSlotSelection({
+    required SlotItem startSlot,
+    required List<String> slotIds,
+    required String startTime,
+    required String endTime,
+  }) => add(SessionSlotSelectionChanged(
+    startSlot: startSlot,
+    slotIds: slotIds,
+    startTime: startTime,
+    endTime: endTime,
+  ));
+  void setCustomer(String customer, {String? customerId}) =>
+      add(SessionCustomerChanged(customer, customerId: customerId));
   void reset() => add(const SessionResetRequested());
   void setOutletOpen(bool isOpen) =>
       add(SessionOutletStatusLoaded(isOpen: isOpen));
+
+  // ── Downstream-clear helpers (called from screen initState) ─────────────────
+  /// Called by ServicesScreen — clears services, staff, date, slot, customer.
+  void clearServicesAndBelow() => add(const SessionServicesAndBelowCleared());
+
+  /// Called by StaffScreen — clears staff, date, slot, customer.
+  void clearStaffAndBelow() => add(const SessionStaffAndBelowCleared());
+
+  /// Called by DateScreen — clears date, slot, customer.
+  void clearDateAndBelow() => add(const SessionDateAndBelowCleared());
+
+  /// Called by SlotScreen — clears slot selection and customer.
+  void clearSlotAndBelow() => add(const SessionSlotAndBelowCleared());
 }
