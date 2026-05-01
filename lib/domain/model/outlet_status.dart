@@ -14,12 +14,12 @@ class OutletStatus {
         ? json['data'] as Map<String, dynamic>
         : json;
 
-    final apiIsOpen = data['isOpen'] as bool? ?? false;
     final openTime = data['openTime'] as String? ?? '';
     final closeTime = data['closeTime'] as String? ?? '';
 
-    // Both must be true: API says open AND current time is within range
-    final isOpen = apiIsOpen && _isWithinTimeRange(openTime, closeTime);
+    // Open purely based on whether current time-of-day falls within the window.
+    // The API's isOpen flag and date portion of the timestamps are ignored.
+    final isOpen = _isWithinTimeRange(openTime, closeTime);
 
     return OutletStatus(
       isOpen: isOpen,
@@ -66,6 +66,23 @@ class OutletStatus {
       }
     } catch (_) {
       return false;
+    }
+  }
+
+  /// Formats a raw API time string (e.g. "2026-04-28 07:00:00" or "07:00:00")
+  /// into a display string like "07:00". Returns empty string on failure.
+  static String formatDisplayTime(String rawTime) {
+    try {
+      if (rawTime.isEmpty) return '';
+      final timePart = rawTime.contains(' ')
+          ? rawTime.split(' ').last
+          : rawTime;
+      final parts = timePart.split(':');
+      final h = int.parse(parts[0]).toString().padLeft(2, '0');
+      final m = int.parse(parts[1]).toString().padLeft(2, '0');
+      return '$h:$m';
+    } catch (_) {
+      return '';
     }
   }
 }

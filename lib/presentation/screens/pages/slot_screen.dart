@@ -377,8 +377,8 @@ class _SlotPill extends StatelessWidget {
       borderWidth = 1;
       fontWeight = FontWeight.w500;
     } else if (isUnavailable) {
-      bgColor = const Color(0xFFFFE4E8);
-      borderColor = const Color(0xFFFFB3BE);
+      bgColor = const Color(0xFFF2F2F4);
+      borderColor = const Color(0xFFD5D5D8);
       textColor = const Color(0xFFB0B0B0);
       borderWidth = 1;
       fontWeight = FontWeight.w400;

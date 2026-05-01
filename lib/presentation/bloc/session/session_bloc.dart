@@ -90,7 +90,12 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     SessionOutletStatusLoaded event,
     Emitter<SessionState> emit,
   ) {
-    emit(state.copyWith(isOutletOpen: event.isOpen));
+    emit(
+      state.copyWith(
+        isOutletOpen: event.isOpen,
+        outletOpenTime: event.openTime,
+      ),
+    );
   }
 
   // Compatibility helpers

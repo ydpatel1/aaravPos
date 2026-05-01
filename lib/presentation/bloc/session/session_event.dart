@@ -85,10 +85,13 @@ class SessionResetRequested extends SessionEvent {
 }
 
 class SessionOutletStatusLoaded extends SessionEvent {
-  const SessionOutletStatusLoaded({required this.isOpen});
+  const SessionOutletStatusLoaded({required this.isOpen, this.openTime = ''});
 
   final bool isOpen;
 
+  /// Raw openTime string from the API, e.g. "2026-04-28 07:00:00" or "07:00:00".
+  final String openTime;
+
   @override
-  List<Object?> get props => [isOpen];
+  List<Object?> get props => [isOpen, openTime];
 }

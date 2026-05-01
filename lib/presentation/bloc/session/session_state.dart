@@ -7,6 +7,7 @@ class SessionState extends Equatable {
     this.mode = BookingMode.appointment,
     this.isCheckIn = false,
     this.isOutletOpen = false,
+    this.outletOpenTime = '',
     this.selectedServices = const <ServiceItem>[],
     this.selectedStaff,
     this.selectedDate,
@@ -21,6 +22,9 @@ class SessionState extends Equatable {
   final BookingMode mode;
   final bool isCheckIn;
   final bool isOutletOpen;
+
+  /// Raw openTime from the API — used to show "Opens at HH:mm" when closed.
+  final String outletOpenTime;
   final List<ServiceItem> selectedServices;
   final StaffMember? selectedStaff;
   final DateTime? selectedDate;
@@ -58,6 +62,7 @@ class SessionState extends Equatable {
     BookingMode? mode,
     bool? isCheckIn,
     bool? isOutletOpen,
+    String? outletOpenTime,
     List<ServiceItem>? selectedServices,
     StaffMember? selectedStaff,
     DateTime? selectedDate,
@@ -76,6 +81,7 @@ class SessionState extends Equatable {
       mode: mode ?? this.mode,
       isCheckIn: isCheckIn ?? this.isCheckIn,
       isOutletOpen: isOutletOpen ?? this.isOutletOpen,
+      outletOpenTime: outletOpenTime ?? this.outletOpenTime,
       selectedServices: selectedServices ?? this.selectedServices,
       selectedStaff: clearStaff ? null : selectedStaff ?? this.selectedStaff,
       selectedDate: clearDate ? null : selectedDate ?? this.selectedDate,
@@ -99,6 +105,7 @@ class SessionState extends Equatable {
   List<Object?> get props => [
     mode,
     isOutletOpen,
+    outletOpenTime,
     selectedServices,
     selectedStaff,
     selectedDate,
